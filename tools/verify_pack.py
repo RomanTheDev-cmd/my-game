@@ -27,5 +27,5 @@ for _ in range(count):
     cursor += length + 36
 assert "assets/fonts/LICENSE.txt" in names, "Missing font license"
 assert "data/localization/strings.ru.translation" in names, "Missing Russian translation"
-assert not any(n.startswith(("data/narrative/", "docs/", "tests/", "tools/")) for n in names), "Development-only content leaked into game pack"
+assert not any(n.startswith(("data/narrative/", "docs/", "tests/", "tools/", "build/")) for n in names), "Development-only content leaked into game pack"
 print(f"Pack contents: {count} entries; translation and license present; internal materials excluded")

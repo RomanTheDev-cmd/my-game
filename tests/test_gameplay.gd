@@ -115,6 +115,7 @@ func run() -> void:
 		if child is Button and child.text == TranslationServer.translate("GIVE_LANTERN"):
 			child.pressed.emit()
 			break
+	check(session.inventory.get("coin") == 12, "UI completion grants the actual quest reward")
 	check(session.quest == 3 and not session.inventory.has("lantern"), "turn-in completes quest and removes item")
 	game.resume()
 	player.hurt_time = 0

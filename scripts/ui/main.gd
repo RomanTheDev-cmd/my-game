@@ -11,6 +11,8 @@ var toast_time := 0.0
 var health_bar: ProgressBar
 var stamina_bar: ProgressBar
 var mana_bar: ProgressBar
+var location_label: Label
+var region_label: Label
 var quest_label: Label
 var prompt: Label
 var current_screen := "title"
@@ -85,6 +87,7 @@ func _build_world() -> void:
 	move_child(world, 0)
 	world.dialog_requested.connect(show_dialog)
 	world.player_died.connect(show_death)
+	world.travel_requested.connect(_on_travel)
 
 func _label(parent: Node, key: String, font_size: int = 17) -> Label:
 	var label := Label.new()
@@ -232,13 +235,12 @@ func show_dialog() -> void:
 	dialog.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if Session.quest == 0:
 		_button("ACCEPT", func():
-			Session.quest = 1
+			Session.advance_quest("accept")
 			world.save_safe()
 			resume())
 	elif Session.quest == 2:
 		_button("GIVE_LANTERN", func():
-			Session.quest = 3
-			Session.inventory.erase("lantern")
+			Session.advance_quest("turn_in")
 			world.save_safe()
 			show_dialog())
 	_button("LATER" if Session.quest == 0 else "CLOSE", resume)
@@ -249,7 +251,7 @@ func show_death() -> void:
 	_page("DEATH_TITLE", 520)
 	_label(screen, "DEATH")
 	_button("RETRY", func():
-		Session.apply(Session.checkpoint.duplicate(true))
+		Session.restore_checkpoint()
 		_build_world()
 		resume())
 	_focus_first()
@@ -278,8 +280,10 @@ func _build_hud() -> void:
 	row.add_child(space)
 	var location := VBoxContainer.new()
 	row.add_child(location)
-	_label(location, "LOCATION", 25).horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_label(location, "REGION", 13).horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	location_label = _label(location, "LOCATION", 25)
+	location_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	region_label = _label(location, "REGION", 13)
+	region_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var bottom := VBoxContainer.new()
 	bottom.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom.offset_left = 24
@@ -314,6 +318,8 @@ func _bar(parent: Node, color: Color) -> ProgressBar:
 func update_hud() -> void:
 	if not is_instance_valid(world) or health_bar == null:
 		return
+	location_label.text = tr(world.definition.location)
+	region_label.text = tr(world.definition.description)
 	health_bar.value = world.player.health
 	stamina_bar.value = world.player.stamina
 	mana_bar.value = world.player.mana
@@ -351,3 +357,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("load_game") and current_screen == "game":
 		load_game()
 		get_viewport().set_input_as_handled()
+
+func _on_travel(destination: String, position: Vector2) -> void:
+	if current_screen != "game" or not world.safe_to_rest():
+		Session.notice.emit("CHECKPOINT_UNSAFE")
+		return
+	if Session.travel(destination, position, world.player_vitals()):
+		# Do not free the source world inside its own interaction callback.
+		call_deferred("_finish_travel")
+
+func _finish_travel() -> void:
+	_build_world()
+	resume()
+	Session.notice.emit("TRAVEL_SAVED")

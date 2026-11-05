@@ -1,8 +1,12 @@
 extends Node2D
 const TREE = preload("res://assets/sprites/tree.png")
 var trees: Array[Vector2] = []
+var region := "crossing"
 
 func _ready() -> void:
+	if region == "lake":
+		_build_lake()
+		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 73106
 	for i in 180:
@@ -40,6 +44,9 @@ func _ready() -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	if region == "lake":
+		_draw_lake()
+		return
 	draw_rect(Rect2(0, 0, 1920, 1280), Color("31483f"))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 614
@@ -65,14 +72,7 @@ func _draw() -> void:
 	for x in range(880, 1020, 35):
 		draw_rect(Rect2(x, 450, 15, 24), Color("7c8076"))
 		draw_rect(Rect2(x + 3, 446, 9, 5), Color("92958a"))
-	# Camp and warm pools of lamplight are deliberately small against the forest.
-	draw_circle(Vector2(440, 470), 18, Color("696453"))
-	for i in 7:
-		var point := Vector2(440, 470) + Vector2.from_angle(i * TAU / 7) * 18
-		draw_rect(Rect2(point - Vector2(4, 3), Vector2(8, 6)), Color("959181"))
-	draw_rect(Rect2(431, 466, 17, 7), Color("8e5f38"))
-	draw_rect(Rect2(435, 458, 9, 11), Color("e6a45b"))
-	draw_rect(Rect2(438, 453, 4, 13), Color("ffe2a0"))
+	_camp(Vector2(440, 470))
 
 func _house(pos: Vector2, size: Vector2, chapel: bool) -> void:
 	draw_rect(Rect2(pos + Vector2(8, 10), size), Color("23352f"))
@@ -91,3 +91,79 @@ func _house(pos: Vector2, size: Vector2, chapel: bool) -> void:
 		draw_rect(Rect2(pos.x + 63, pos.y - 75, 38, 62), Color("777d74"))
 		draw_rect(Rect2(pos.x + 70, pos.y - 60, 24, 30), Color("273b3a"))
 		draw_rect(Rect2(pos.x + 65, pos.y - 81, 34, 7), Color("4f5860"))
+
+func _camp(center: Vector2) -> void:
+	draw_circle(center, 18, Color("696453"))
+	for i in 7:
+		var point := center + Vector2.from_angle(i * TAU / 7) * 18
+		draw_rect(Rect2(point - Vector2(4, 3), Vector2(8, 6)), Color("959181"))
+	draw_rect(Rect2(center + Vector2(-9, -4), Vector2(17, 7)), Color("8e5f38"))
+	draw_rect(Rect2(center + Vector2(-5, -12), Vector2(9, 11)), Color("e6a45b"))
+	draw_rect(Rect2(center + Vector2(-2, -17), Vector2(4, 13)), Color("ffe2a0"))
+
+func _obstacle(rect: Rect2) -> void:
+	var body := StaticBody2D.new()
+	body.position = rect.get_center()
+	var collider := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size = rect.size
+	collider.shape = shape
+	body.add_child(collider)
+	get_parent().add_child(body)
+
+func _build_lake() -> void:
+	for rect in [Rect2(-30, -30, 1980, 30), Rect2(-30, 1280, 1980, 30),
+		Rect2(-30, 0, 30, 1280), Rect2(1920, 0, 30, 1280), Rect2(590, 120, 780, 290),
+		Rect2(690, 410, 580, 75), Rect2(950, 525, 70, 50)]:
+		_obstacle(rect)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 14916
+	for i in 110:
+		var point := Vector2(rng.randi_range(40, 1880), rng.randi_range(60, 1230))
+		if absf(point.y - 650) < 95 or point.distance_to(Vector2(360, 610)) < 150:
+			continue
+		if Rect2(530, 80, 900, 470).has_point(point) or Rect2(850, 500, 350, 400).has_point(point):
+			continue
+		var body := StaticBody2D.new()
+		body.position = point
+		var collider := CollisionShape2D.new()
+		var shape := CircleShape2D.new()
+		shape.radius = 10
+		collider.shape = shape
+		body.add_child(collider)
+		var sprite := Sprite2D.new()
+		sprite.texture = TREE
+		sprite.position.y = -30
+		sprite.modulate = Color("bac9a5")
+		body.add_child(sprite)
+		get_parent().add_child(body)
+
+func _draw_lake() -> void:
+	draw_rect(Rect2(0, 0, 1920, 1280), Color("405447"))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 14917
+	for i in 5500:
+		var point := Vector2(rng.randi_range(0, 1920), rng.randi_range(0, 1280))
+		draw_rect(Rect2(point, Vector2(2, 3)), Color("52684e") if i % 2 else Color("354b40"))
+	# Stepped shoreline follows the authored water obstacles.
+	for rect in [Rect2(570, 100, 820, 330), Rect2(670, 390, 620, 115)]:
+		draw_rect(rect.grow(12), Color("98957a"))
+		draw_rect(rect, Color("2f5960"))
+		draw_rect(rect.grow(-10), Color("294c59"))
+	for i in 280:
+		var point := Vector2(rng.randi_range(595, 1360), rng.randi_range(125, 405))
+		draw_rect(Rect2(point, Vector2(rng.randi_range(6, 18), 2)), Color("568083"))
+	for x in range(0, 1920, 10):
+		draw_rect(Rect2(x, 624, 10, 52), Color("898572"))
+		for i in 2:
+			draw_rect(Rect2(x + i * 4, rng.randi_range(629, 667), 4, 2), Color("b0a78a"))
+	draw_rect(Rect2(910, 510, 150, 110), Color("767b70"))
+	for y in range(515, 620, 15):
+		draw_line(Vector2(910, y), Vector2(1060, y), Color("95978a"), 2)
+	draw_rect(Rect2(948, 545, 76, 25), Color("b3ac91"))
+	draw_rect(Rect2(961, 500, 50, 45), Color("929686"))
+	draw_rect(Rect2(970, 478, 32, 25), Color("c6bda0"))
+	for x in range(720, 1260, 50):
+		draw_rect(Rect2(x, 485, 3, 18), Color("82936b"))
+		draw_rect(Rect2(x - 2, 478, 7, 9), Color("c0aa7e"))
+	_camp(Vector2(360, 610))

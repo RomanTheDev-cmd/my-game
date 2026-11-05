@@ -11,8 +11,8 @@ func check(condition: bool, message: String) -> void:
 		printerr("FAIL: ", message)
 
 func _initialize() -> void:
-	var valid := {"version": 1, "position": [410, 490], "difficulty": 1, "quest": 1,
-		"defeated": ["road_1"], "inventory": {"herb": 2}, "gathered": ["herb_650_670"]}
+	var valid := {"version": 2, "region": "crossing", "position": [410, 490], "difficulty": 1, "quest": 1,
+		"vitals": {"health": 75, "stamina": 60, "mana": 40}, "defeated": ["road_1"], "inventory": {"herb": 2}, "gathered": ["herb_650_670"]}
 	check(Store.load_game(PATH).is_empty(), "missing save is an explicit empty result")
 	check(Store.write_game(valid, PATH) == OK, "valid state writes successfully")
 	var first := Store.load_game(PATH)
@@ -28,7 +28,7 @@ func _initialize() -> void:
 	malformed.position = ["bad", 0]
 	check(Store.write_game(malformed, PATH) == ERR_INVALID_DATA, "malformed coordinates rejected")
 	check(Store.load_game(PATH).get("quest") == 1, "rejected write preserves recoverable state")
-	for field in ["version", "quest", "difficulty", "defeated", "inventory", "gathered"]:
+	for field in ["version", "vitals", "region", "quest", "difficulty", "defeated", "inventory", "gathered"]:
 		var missing := valid.duplicate(true)
 		missing.erase(field)
 		check(not Store.validate(missing), "reject missing " + field)
@@ -48,6 +48,10 @@ func _initialize() -> void:
 	bad = valid.duplicate(true)
 	bad.inventory.erase("lantern")
 	check(not Store.validate(bad), "reject quest objective state without its item")
+	for value in [-1, 0, 101, INF, "bad"]:
+		bad = valid.duplicate(true)
+		bad.vitals.health = value
+		check(not Store.validate(bad), "reject invalid saved health")
 	check(Store.write_game(valid, PATH) == OK, "can recover by saving after primary corruption")
 	check(Store.read_valid(PATH + ".bak").get("quest") == 1, "corrupt primary does not overwrite good backup")
 	for suffix in ["", ".tmp", ".bak"]:

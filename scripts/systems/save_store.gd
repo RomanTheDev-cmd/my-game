@@ -1,11 +1,32 @@
 extends RefCounted
 
-const VERSION := 1
+const Regions = preload("res://scripts/world/region_catalog.gd")
+const VERSION := 2
 const DEFAULT_PATH := "user://save.json"
+
+static func migrate(data: Variant) -> Dictionary:
+	if not data is Dictionary:
+		return {}
+	var upgraded: Dictionary = data.duplicate(true)
+	if upgraded.get("version") == 1:
+		upgraded["version"] = VERSION
+		upgraded["region"] = "crossing"
+		upgraded["vitals"] = {"health": 100.0, "stamina": 100.0, "mana": 100.0}
+	return upgraded
 
 static func validate(data: Variant) -> bool:
 	if not data is Dictionary or data.get("version") != VERSION:
 		return false
+	if not data.get("region") is String or not Regions.valid(data.region):
+		return false
+	if not data.get("vitals") is Dictionary:
+		return false
+	for key in ["health", "stamina", "mana"]:
+		var amount = data.vitals.get(key)
+		if not (amount is float or amount is int) or not is_finite(float(amount)):
+			return false
+		if amount < 0 or amount > 100 or (key == "health" and amount == 0):
+			return false
 	if not data.get("position") is Array or data.position.size() != 2:
 		return false
 	for value in data.position:
@@ -45,7 +66,7 @@ static func read_valid(path: String) -> Dictionary:
 	var parser := JSON.new()
 	if parser.parse(FileAccess.get_file_as_string(path)) != OK:
 		return {}
-	var data = parser.data
+	var data := migrate(parser.data)
 	return data if validate(data) else {}
 
 static func load_game(path: String = DEFAULT_PATH) -> Dictionary:
@@ -53,6 +74,7 @@ static func load_game(path: String = DEFAULT_PATH) -> Dictionary:
 	return read_valid(path + ".bak") if data.is_empty() else data
 
 static func write_game(data: Dictionary, path: String = DEFAULT_PATH) -> Error:
+	data = migrate(data)
 	if not validate(data):
 		return ERR_INVALID_DATA
 	var file := FileAccess.open(path + ".tmp", FileAccess.WRITE)

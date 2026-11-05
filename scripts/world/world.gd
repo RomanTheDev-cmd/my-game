@@ -1,43 +1,52 @@
 extends Node2D
 const Player = preload("res://scripts/actors/player.gd")
 const Enemy = preload("res://scripts/actors/enemy.gd")
+const Regions = preload("res://scripts/world/region_catalog.gd")
 const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested
+signal travel_requested(destination: String, position: Vector2)
 signal player_died
 var player: CharacterBody2D
 var keeper: Sprite2D
 var lantern: Sprite2D
 var herbs: Array[Sprite2D] = []
 var time := 0.0
+var definition: Dictionary = {}
 
 func _ready() -> void:
 	y_sort_enabled = true
+	definition = Regions.get_region(Session.region)
 	var land := Landscape.new()
+	land.region = Session.region
 	land.z_index = -2
 	add_child(land)
 	keeper = Sprite2D.new()
 	keeper.texture = preload("res://assets/sprites/keeper.png")
-	keeper.position = Vector2(520, 490)
+	keeper.position = definition.get("keeper", Vector2.ZERO)
+	keeper.visible = definition.has("keeper")
 	add_child(keeper)
 	lantern = Sprite2D.new()
 	lantern.texture = preload("res://assets/sprites/lantern.png")
 	lantern.position = Vector2(1240, 420)
-	lantern.visible = Session.quest < 2
+	lantern.visible = Session.region == "crossing" and Session.quest < 2
 	add_child(lantern)
-	for point in [Vector2(650, 670), Vector2(930, 680), Vector2(1200, 700)]:
+	for point in definition.herbs:
 		var herb := Sprite2D.new()
 		herb.texture = preload("res://assets/sprites/herb.png")
 		herb.position = point
-		herb.set_meta("id", "herb_%d_%d" % [point.x, point.y])
+		herb.set_meta("id", Regions.herb_id(Session.region, point))
 		herb.visible = herb.get_meta("id") not in Session.gathered
 		add_child(herb)
 		herbs.append(herb)
 	player = Player.new()
 	player.position = Session.arrival
+	player.health = Session.vitals.health
+	player.stamina = Session.vitals.stamina
+	player.mana = Session.vitals.mana
 	add_child(player)
 	player.died.connect(func(): player_died.emit())
 	player.strike.connect(_on_strike)
-	for entry in [["road_1", Vector2(970, 550)], ["road_2", Vector2(1240, 530)], ["road_3", Vector2(1430, 640)]]:
+	for entry in definition.enemies:
 		if entry[0] in Session.defeated:
 			continue
 		var enemy := Enemy.new()
@@ -65,20 +74,22 @@ func safe_to_rest() -> bool:
 
 func save_safe() -> void:
 	if safe_to_rest():
-		Session.save_at(player.position)
+		Session.save_at(player.position, player_vitals())
 	else:
 		Session.notice.emit("CHECKPOINT_UNSAFE")
 
 func nearby_key() -> String:
-	if player.position.distance_to(keeper.position) < 50:
+	if keeper.visible and player.position.distance_to(keeper.position) < 50:
 		return "KEEPER_NAME"
-	if player.position.distance_to(Vector2(440, 470)) < 45:
+	if player.position.distance_to(definition.camp) < 45:
 		return "REST"
 	if lantern.visible and player.position.distance_to(lantern.position) < 40:
 		return "LANTERN"
 	for herb in herbs:
 		if herb.visible and player.position.distance_to(herb.position) < 30:
 			return "HERB"
+	if player.position.distance_to(definition.exit) < 55:
+		return definition.exit_label
 	return ""
 
 func interact() -> void:
@@ -87,16 +98,16 @@ func interact() -> void:
 		"REST":
 			if safe_to_rest():
 				player.restore()
-				Session.save_at(player.position)
+				Session.save_at(player.position, player_vitals())
 			else:
 				Session.notice.emit("CHECKPOINT_UNSAFE")
 		"LANTERN":
-			if Session.quest == 1:
-				Session.quest = 2
-				Session.inventory["lantern"] = 1
+			if Session.advance_quest("found"):
 				lantern.hide()
 				Session.notice.emit("LANTERN_FOUND")
 				Session.changed.emit()
+		"TO_LAKE", "TO_CROSSING":
+			travel_requested.emit(definition.destination, definition.arrival)
 		"HERB":
 			for herb in herbs:
 				if herb.visible and player.position.distance_to(herb.position) < 30:
@@ -117,3 +128,18 @@ func _on_defeated(id: String) -> void:
 	if id not in Session.defeated:
 		Session.defeated.append(id)
 	Session.changed.emit()
+
+func _draw() -> void:
+	if definition.is_empty():
+		return
+	var point: Vector2 = definition.exit
+	draw_rect(Rect2(point + Vector2(-2, -27), Vector2(4, 30)), Color("6c654e"))
+	draw_rect(Rect2(point + Vector2(-18, -30), Vector2(36, 12)), Color("baaa7d"))
+	var direction := 1 if definition.destination == "lake" else -1
+	var tip := point + Vector2(direction * 12, -24)
+	draw_line(point + Vector2(-direction * 12, -24), tip, Color("394d46"), 2)
+	draw_line(tip, tip + Vector2(-direction * 5, -4), Color("394d46"), 2)
+	draw_line(tip, tip + Vector2(-direction * 5, 4), Color("394d46"), 2)
+
+func player_vitals() -> Dictionary:
+	return {"health": player.health, "stamina": player.stamina, "mana": player.mana}

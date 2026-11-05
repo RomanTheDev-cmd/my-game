@@ -14,6 +14,18 @@ func capture() -> void:
 		await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/gameplay.png")
+	var session := root.get_node("Session")
+	session.region = "lake"
+	session.arrival = Vector2(1100, 535)
+	game._build_world()
+	game.resume()
+	for i in 20:
+		await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/lake.png")
+	session.region = "crossing"
+	session.arrival = Vector2(410, 490)
+	game._build_world()
 	game.show_dialog()
 	await process_frame
 	await RenderingServer.frame_post_draw
