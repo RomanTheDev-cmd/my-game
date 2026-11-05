@@ -1,4 +1,5 @@
 extends Node2D
+const Regions = preload("res://scripts/world/region_catalog.gd")
 const TREE = preload("res://assets/sprites/tree.png")
 var trees: Array[Vector2] = []
 var region := "crossing"
@@ -11,6 +12,8 @@ func _ready() -> void:
 	rng.seed = 73106
 	for i in 180:
 		var point := Vector2(rng.randi_range(35, 1880), rng.randi_range(40, 1230))
+		if _reserved(point):
+			continue
 		if absf(point.y - (610 - point.x * 0.07)) < 80 or point.distance_to(Vector2(410, 490)) < 150:
 			continue
 		if Rect2(970, 270, 310, 330).has_point(point) or Rect2(250, 240, 380, 270).has_point(point):
@@ -120,6 +123,8 @@ func _build_lake() -> void:
 	rng.seed = 14916
 	for i in 110:
 		var point := Vector2(rng.randi_range(40, 1880), rng.randi_range(60, 1230))
+		if _reserved(point):
+			continue
 		if absf(point.y - 650) < 95 or point.distance_to(Vector2(360, 610)) < 150:
 			continue
 		if Rect2(530, 80, 900, 470).has_point(point) or Rect2(850, 500, 350, 400).has_point(point):
@@ -167,3 +172,13 @@ func _draw_lake() -> void:
 		draw_rect(Rect2(x, 485, 3, 18), Color("82936b"))
 		draw_rect(Rect2(x - 2, 478, 7, 9), Color("c0aa7e"))
 	_camp(Vector2(360, 610))
+
+func _reserved(point: Vector2) -> bool:
+	var definition := Regions.get_region(region)
+	for entry in definition.enemies:
+		if point.distance_to(entry[1]) < 45:
+			return true
+	for herb in definition.herbs:
+		if point.distance_to(herb) < 35:
+			return true
+	return false

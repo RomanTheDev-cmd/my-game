@@ -1,5 +1,7 @@
 extends Node
 const World = preload("res://scripts/world/world.gd")
+const Skills = preload("res://scripts/progression/skill_rules.gd")
+const MapView = preload("res://scripts/ui/world_map.gd")
 const Store = preload("res://scripts/systems/save_store.gd")
 var world: Node2D
 var layer: CanvasLayer
@@ -8,6 +10,7 @@ var overlay: Control
 var screen: VBoxContainer
 var toast: Label
 var toast_time := 0.0
+var human_label: Label
 var health_bar: ProgressBar
 var stamina_bar: ProgressBar
 var mana_bar: ProgressBar
@@ -67,7 +70,7 @@ func _build_theme() -> void:
 	toast = Label.new()
 	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	toast.position = Vector2(-350, -148)
+	toast.position = Vector2(-350, -52)
 	toast.size = Vector2(700, 46)
 	toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	toast.add_theme_color_override("font_color", gold)
@@ -96,12 +99,12 @@ func _label(parent: Node, key: String, font_size: int = 17) -> Label:
 	parent.add_child(label)
 	return label
 
-func _button(key: String, action: Callable) -> Button:
+func _button(key: String, action: Callable, parent: Node = null) -> Button:
 	var button := Button.new()
 	button.text = tr(key)
 	button.custom_minimum_size = Vector2(280, 44)
 	button.pressed.connect(action)
-	screen.add_child(button)
+	(parent if parent != null else screen).add_child(button)
 	return button
 
 func _page(key: String, width: float = 420) -> void:
@@ -109,6 +112,7 @@ func _page(key: String, width: float = 420) -> void:
 		overlay.remove_child(child)
 		child.queue_free()
 	get_tree().paused = true
+	_position_toast(true)
 	overlay.show()
 	hud.visible = Session.running
 	var shade := ColorRect.new()
@@ -117,6 +121,8 @@ func _page(key: String, width: float = 420) -> void:
 	overlay.add_child(shade)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.offset_top = 8
+	center.offset_bottom = -64
 	overlay.add_child(center)
 	screen = VBoxContainer.new()
 	screen.custom_minimum_size.x = width
@@ -175,6 +181,7 @@ func load_game() -> void:
 func resume() -> void:
 	current_screen = "game"
 	overlay.hide()
+	_position_toast(false)
 	hud.show()
 	get_tree().paused = false
 	update_hud()
@@ -183,6 +190,8 @@ func show_pause() -> void:
 	current_screen = "pause"
 	_page("PAUSED")
 	_button("RESUME", resume)
+	_button("MAP", show_map)
+	_button("SKILLS", show_skills)
 	_button("SAVE", func():
 		world.save_safe())
 	_button("LOAD", load_game)
@@ -198,36 +207,57 @@ func show_settings() -> void:
 	for key in ["STORY", "ADVENTURE", "CHALLENGE"]:
 		choice.add_item(tr(key))
 	choice.select(Session.difficulty)
-	choice.item_selected.connect(func(index): Session.difficulty = index)
+	choice.item_selected.connect(func(index):
+		if not Session.set_difficulty(index):
+			choice.select(Session.difficulty))
 	screen.add_child(choice)
 	var fullscreen := CheckButton.new()
 	fullscreen.text = tr("FULLSCREEN")
-	fullscreen.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+	fullscreen.button_pressed = Session.fullscreen
 	fullscreen.toggled.connect(func(enabled):
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if enabled else DisplayServer.WINDOW_MODE_WINDOWED))
+		if not Session.set_fullscreen(enabled):
+			fullscreen.set_pressed_no_signal(Session.fullscreen))
 	screen.add_child(fullscreen)
 	_button("BACK", show_pause if Session.running else show_title)
 	choice.grab_focus()
 
 func show_journal() -> void:
 	current_screen = "journal"
-	_page("JOURNAL", 600)
-	var task := _label(screen, "QUEST_%d" % Session.quest, 20)
-	task.custom_minimum_size.x = 600
+	_page("JOURNAL", 620)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(620, 290)
+	screen.add_child(scroll)
+	var contents := VBoxContainer.new()
+	contents.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	contents.add_theme_constant_override("separation", 10)
+	scroll.add_child(contents)
+	var task := _label(contents, "QUEST_%d" % Session.quest, 18)
 	task.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_label(screen, "INVENTORY", 23).add_theme_color_override("font_color", gold)
+	if Session.aid_quest > 0:
+		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
+		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_label(contents, "INVENTORY", 23).add_theme_color_override("font_color", gold)
 	var entries := 0
 	for item in Session.inventory:
 		var amount := int(Session.inventory[item])
 		if amount > 0:
-			_label(screen, "").text = "%s × %d" % [tr(str(item).to_upper()), amount]
+			_label(contents, "").text = "%s × %d" % [tr(str(item).to_upper()), amount]
 			entries += 1
 	if entries == 0:
-		_label(screen, "EMPTY")
+		_label(contents, "EMPTY")
+	_button("CRAFT_POTION", func():
+		Session.craft_item("potion")
+		show_journal(), contents).disabled = int(Session.inventory.get("herb", 0)) < 3
+	_button("DRINK_POTION", func():
+		world.player.drink_potion()
+		show_journal(), contents).disabled = int(Session.inventory.get("potion", 0)) < 1 or world.player.health >= 100
 	_button("BACK", resume)
 	_focus_first()
 
-func show_dialog() -> void:
+func show_dialog(kind: String = "keeper") -> void:
+	if kind == "wayfarer":
+		show_aid_dialog()
+		return
 	current_screen = "dialog"
 	_page("KEEPER_NAME", 580)
 	var dialog := _label(screen, "DIALOG_%d" % Session.quest, 21)
@@ -270,7 +300,7 @@ func _build_hud() -> void:
 	var stats := VBoxContainer.new()
 	stats.custom_minimum_size.x = 220
 	row.add_child(stats)
-	_label(stats, "HUMAN", 14)
+	human_label = _label(stats, "HUMAN", 14)
 	health_bar = _bar(stats, Color("b3665a"))
 	stamina_bar = _bar(stats, Color("aeab70"))
 	mana_bar = _bar(stats, Color("7ca3b1"))
@@ -318,6 +348,7 @@ func _bar(parent: Node, color: Color) -> ProgressBar:
 func update_hud() -> void:
 	if not is_instance_valid(world) or health_bar == null:
 		return
+	human_label.text = "%s · %s %d" % [tr("HUMAN"), tr("LEVEL"), Skills.level(Session.xp)]
 	location_label.text = tr(world.definition.location)
 	region_label.text = tr(world.definition.description)
 	health_bar.value = world.player.health
@@ -326,7 +357,7 @@ func update_hud() -> void:
 	health_bar.tooltip_text = "%s: %d/100" % [tr("HP"), int(world.player.health)]
 	stamina_bar.tooltip_text = "%s: %d/100" % [tr("STAMINA"), int(world.player.stamina)]
 	mana_bar.tooltip_text = "%s: %d/100" % [tr("MANA"), int(world.player.mana)]
-	quest_label.text = tr("QUEST_%d" % Session.quest)
+	quest_label.text = tr("AID_QUEST_1") if Session.aid_quest == 1 else tr("QUEST_%d" % Session.quest)
 	var near: String = world.nearby_key()
 	prompt.text = tr("INTERACT") + " · " + tr(near) if near != "" else ""
 
@@ -345,7 +376,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause_game"):
 		if current_screen == "game":
 			show_pause()
-		elif current_screen in ["pause", "dialog", "journal", "settings"] and Session.running:
+		elif current_screen in ["pause", "dialog", "journal", "settings", "map", "skills"] and Session.running:
+			resume()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("skills") and current_screen in ["game", "skills"]:
+		if current_screen == "game":
+			show_skills()
+		else:
+			resume()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("map") and current_screen in ["game", "map"]:
+		if current_screen == "game":
+			show_map()
+		else:
 			resume()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("journal") and current_screen in ["game", "journal"]:
@@ -370,3 +413,66 @@ func _finish_travel() -> void:
 	_build_world()
 	resume()
 	Session.notice.emit("TRAVEL_SAVED")
+
+func show_map() -> void:
+	current_screen = "map"
+	_page("MAP", 700)
+	var name_label := _label(screen, world.definition.location, 18)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var map := MapView.new()
+	map.name = "WorldMap"
+	map.region = Session.region
+	map.player_position = world.player.position
+	map.facing = world.player.facing
+	map.obstacles = world.navigation.obstacles
+	screen.add_child(map)
+	var legend := _label(screen, "MAP_LEGEND", 13)
+	legend.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_button("BACK", resume)
+	_focus_first()
+
+func show_skills() -> void:
+	current_screen = "skills"
+	_page("SKILLS", 620)
+	var summary := _label(screen, "", 16)
+	summary.text = "%s %d · %s: %d · %s: %d" % [tr("LEVEL"), Skills.level(Session.xp), tr("EXPERIENCE"), Session.xp, tr("SKILL_POINTS"), Skills.points(Session.xp, Session.skills)]
+	summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	for id in Skills.SKILLS:
+		var definition: Dictionary = Skills.SKILLS[id]
+		var button := _button(definition.name, _learn_skill.bind(id))
+		button.text += "  %d/%d" % [int(Session.skills.get(id, 0)), definition.max]
+		button.tooltip_text = tr(definition.description)
+		button.disabled = Skills.learn(Session.xp, Session.skills, id).is_empty()
+		var description := _label(screen, definition.description, 13)
+		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		description.custom_minimum_size.x = 620
+	_button("BACK", resume)
+	_focus_first()
+
+func _learn_skill(id: String) -> void:
+	Session.learn_skill(id)
+	show_skills()
+
+func show_aid_dialog() -> void:
+	current_screen = "dialog"
+	_page("AID_NAME", 620)
+	var dialog := _label(screen, "AID_DIALOG_%d" % Session.aid_quest, 19)
+	dialog.custom_minimum_size.x = 620
+	dialog.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if Session.aid_quest == 0:
+		_button("AID_ACCEPT", _aid_action.bind("accept"))
+	elif Session.aid_quest == 1:
+		_button("AID_HERBS", _aid_action.bind("herbs")).disabled = int(Session.inventory.get("herb", 0)) < 3
+		_button("AID_COINS", _aid_action.bind("coins")).disabled = int(Session.inventory.get("coin", 0)) < 8
+		_button("AID_MAGIC", _aid_action.bind("magic")).disabled = world.player.mana < 35
+	_button("CLOSE", resume)
+	_focus_first()
+
+func _aid_action(event: String) -> void:
+	world.aid_choice(event)
+	show_aid_dialog()
+
+func _position_toast(in_overlay: bool) -> void:
+	toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM if in_overlay else Control.PRESET_CENTER_TOP)
+	toast.position = Vector2(-350, -52 if in_overlay else 110)
+	toast.size = Vector2(700, 46)

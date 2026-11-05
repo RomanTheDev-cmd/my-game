@@ -9,6 +9,11 @@ var timer := 0.0
 var attack_origin := Vector2.ZERO
 var attack_direction := Vector2.RIGHT
 var sprite: Sprite2D
+var navigation: RefCounted
+var path := PackedVector2Array()
+var path_index := 0
+var path_timer := 0.0
+var path_target := Vector2.INF
 
 func _ready() -> void:
 	collision_layer = 4
@@ -28,13 +33,14 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(target) or target.health <= 0:
 		return
 	timer = maxf(0, timer - delta)
+	path_timer = maxf(0, path_timer - delta)
 	var offset := target.global_position - global_position
 	if state == "windup":
 		velocity = Vector2.ZERO
 		if timer == 0:
 			if target.global_position.distance_to(attack_origin) < 48:
 				var toward := (target.global_position - attack_origin).normalized()
-				if toward.dot(attack_direction) > 0.15:
+				if toward.dot(attack_direction) > 0.15 and (navigation == null or navigation.segment_clear(attack_origin, target.global_position)):
 					target.receive_damage(20)
 			state = "recover"
 			timer = 0.8
@@ -42,15 +48,15 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		if timer == 0:
 			state = "idle"
-	elif offset.length() < 36:
+	elif offset.length() < 36 and (navigation == null or navigation.segment_clear(global_position, target.global_position)):
 		state = "windup"
 		timer = 0.65
 		attack_origin = global_position
 		attack_direction = offset.normalized()
 	elif offset.length() < 210 and global_position.distance_to(home) < 320:
-		velocity = offset.normalized() * 58
+		velocity = _steer(target.global_position, 58)
 	else:
-		velocity = (home - global_position).normalized() * 35 if global_position.distance_to(home) > 8 else Vector2.ZERO
+		velocity = _steer(home, 35) if global_position.distance_to(home) > 8 else Vector2.ZERO
 	move_and_slide()
 	if velocity.x != 0:
 		sprite.flip_h = velocity.x < 0
@@ -76,3 +82,17 @@ func _draw() -> void:
 	if health < 75:
 		draw_rect(Rect2(-14, -35, 28, 3), Color("302e38"))
 		draw_rect(Rect2(-14, -35, 28 * maxf(0, health) / 75, 3), Color("bd7568"))
+
+func _steer(destination: Vector2, speed: float) -> Vector2:
+	if navigation == null:
+		return (destination - global_position).normalized() * speed
+	if path_timer == 0 or path_target.distance_to(destination) > 30:
+		path = navigation.find_path(global_position, destination)
+		path_index = 0
+		path_target = destination
+		path_timer = 0.45
+	while path_index < path.size() and global_position.distance_to(path[path_index]) < 7:
+		path_index += 1
+	if path_index >= path.size():
+		return Vector2.ZERO
+	return (path[path_index] - global_position).normalized() * speed

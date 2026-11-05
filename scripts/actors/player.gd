@@ -1,7 +1,9 @@
 extends CharacterBody2D
+const Magic = preload("res://scripts/magic/magic_rules.gd")
 const Rules = preload("res://scripts/combat/combat_rules.gd")
 signal died
 signal strike(origin: Vector2, direction: Vector2)
+signal cast_spell(origin: Vector2, direction: Vector2, damage: float)
 signal stats_changed
 var health := 100.0
 var stamina := 100.0
@@ -14,6 +16,8 @@ var hurt_time := 0.0
 var blocking := false
 var dodge_direction := Vector2.ZERO
 var sprite: Sprite2D
+var magic_cooldown := 0.0
+var aim_with_mouse := false
 
 func _ready() -> void:
 	collision_layer = 2
@@ -40,6 +44,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if health <= 0:
 		return
+	magic_cooldown = maxf(0, magic_cooldown - delta)
 	attack_time = maxf(0, attack_time - delta)
 	attack_cooldown = maxf(0, attack_cooldown - delta)
 	dodge_time = maxf(0, dodge_time - delta)
@@ -63,14 +68,11 @@ func _physics_process(delta: float) -> void:
 	stamina = minf(100, stamina + delta * (10 if blocking else 24))
 	mana = minf(100, mana + delta * 2)
 	if Input.is_action_just_pressed("heal"):
-		if health >= 100:
-			Session.notice.emit("NO_HEAL_NEEDED")
-		elif mana < 35:
-			Session.notice.emit("NOT_ENOUGH_MANA")
-		else:
-			mana -= 35
-			health = minf(100, health + 40)
-			modulate = Color(1, 1.4, 1.15)
+		cast_magic("heal")
+	if Input.is_action_just_pressed("cast"):
+		cast_magic("light")
+	if Input.is_action_just_pressed("use_potion"):
+		drink_potion()
 	sprite.flip_h = facing.x < 0
 	sprite.position.y = -12 + (sin(Time.get_ticks_msec() * 0.018) if velocity.length() > 1 else 0)
 	modulate = modulate.lerp(Color.WHITE, delta * 8)
@@ -80,7 +82,8 @@ func _physics_process(delta: float) -> void:
 func receive_damage(amount: float) -> void:
 	if health <= 0 or hurt_time > 0:
 		return
-	var hit := Rules.damage(amount, Session.difficulty, blocking, dodge_time > 0)
+	var reduced := amount * (1.0 - 0.1 * int(Session.skills.get("ward", 0)))
+	var hit := Rules.damage(reduced, Session.difficulty, blocking, dodge_time > 0)
 	if hit <= 0:
 		return
 	if blocking:
@@ -104,3 +107,44 @@ func _draw() -> void:
 		draw_arc(Vector2(0, -8), 32, angle - 0.95, angle + 0.95, 12, Color(0.94, 0.85, 0.63, attack_time / 0.18), 3)
 	if blocking:
 		draw_arc(Vector2(0, -6), 17, facing.angle() - 0.9, facing.angle() + 0.9, 8, Color("c9b989"), 3)
+
+func cast_magic(id: String) -> bool:
+	if dodge_time > 0:
+		return false
+	var result := Magic.cast(id, health, mana, magic_cooldown)
+	if result.is_empty():
+		if id == "heal" and health >= 100:
+			Session.notice.emit("NO_HEAL_NEEDED")
+		elif Magic.SPELLS.has(id) and mana < Magic.SPELLS[id].cost:
+			Session.notice.emit("NOT_ENOUGH_MANA")
+		return false
+	health = result.health
+	mana = result.mana
+	magic_cooldown = result.cooldown
+	if id == "light":
+		var direction := facing
+		if aim_with_mouse and global_position.distance_to(get_global_mouse_position()) > 3:
+			direction = (get_global_mouse_position() - global_position).normalized()
+		cast_spell.emit(global_position + direction * 12, direction, result.damage + 6 * int(Session.skills.get("light", 0)))
+	else:
+		modulate = Color(1, 1.4, 1.15)
+	stats_changed.emit()
+	return true
+
+func drink_potion() -> bool:
+	if health >= 100:
+		Session.notice.emit("NO_HEAL_NEEDED")
+		return false
+	if health <= 0 or not Session.consume_item("potion"):
+		Session.notice.emit("NO_POTION")
+		return false
+	health = minf(100, health + 60)
+	modulate = Color(1, 1.4, 1.15)
+	stats_changed.emit()
+	return true
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion or event is InputEventMouseButton:
+		aim_with_mouse = true
+	elif event is InputEventJoypadMotion and absf(event.axis_value) > 0.25:
+		aim_with_mouse = false

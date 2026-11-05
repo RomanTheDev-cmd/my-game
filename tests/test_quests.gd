@@ -40,5 +40,10 @@ func _initialize() -> void:
 			if not next.is_empty():
 				queue.append(next)
 	check(visited.size() == Quests.GRAPH.size() and visited.has(3), "no unreachable authored stage or missing ending")
+	for event in ["herbs", "coins", "magic"]:
+		var entry := Quests.aid_transition(0, {"herb": 3, "coin": 8}, 35, "accept")
+		var outcome := Quests.aid_transition(entry.stage, entry.inventory, entry.mana, event)
+		check(outcome.get("stage") == 2, "each authored alternative can complete independently")
+		check(Quests.aid_transition(2, outcome.inventory, outcome.mana, event).is_empty(), "each completed alternative is terminal")
 	print("Quest checks: %d; failures: %d" % [checks, failures])
 	quit(1 if failures else 0)

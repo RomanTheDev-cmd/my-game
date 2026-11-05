@@ -5,8 +5,8 @@ static func install() -> void:
 		"move_left": [KEY_A, KEY_LEFT], "move_right": [KEY_D, KEY_RIGHT],
 		"move_up": [KEY_W, KEY_UP], "move_down": [KEY_S, KEY_DOWN],
 		"attack": [KEY_J], "dodge": [KEY_SPACE], "block": [KEY_K],
-		"heal": [KEY_Q], "interact": [KEY_E], "pause_game": [KEY_ESCAPE],
-		"journal": [KEY_TAB], "save_game": [KEY_F5], "load_game": [KEY_F9],
+		"cast": [KEY_F], "use_potion": [KEY_H], "heal": [KEY_Q], "interact": [KEY_E], "pause_game": [KEY_ESCAPE],
+		"skills": [KEY_C], "map": [KEY_M], "journal": [KEY_TAB], "save_game": [KEY_F5], "load_game": [KEY_F9],
 		"fullscreen": [KEY_F11]
 	}
 	for action in bindings:
@@ -18,7 +18,7 @@ static func install() -> void:
 			event.physical_keycode = key
 			InputMap.action_add_event(action, event)
 	var buttons := {"attack": JOY_BUTTON_X, "dodge": JOY_BUTTON_A, "block": JOY_BUTTON_LEFT_SHOULDER,
-		"heal": JOY_BUTTON_Y, "interact": JOY_BUTTON_B, "pause_game": JOY_BUTTON_START,
+		"cast": JOY_BUTTON_RIGHT_SHOULDER, "heal": JOY_BUTTON_Y, "interact": JOY_BUTTON_B, "pause_game": JOY_BUTTON_START,
 		"journal": JOY_BUTTON_BACK}
 	for action in buttons:
 		var event := InputEventJoypadButton.new()

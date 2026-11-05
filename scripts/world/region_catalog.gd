@@ -10,7 +10,7 @@ const REGIONS := {
 	},
 	"lake": {
 		"location": "LOCATION_LAKE", "description": "REGION_LAKE", "camp": Vector2(360, 610),
-		"exit": Vector2(135, 650), "destination": "crossing", "arrival": Vector2(1730, 500), "exit_label": "TO_CROSSING",
+		"wayfarer": Vector2(480, 620), "exit": Vector2(135, 650), "destination": "crossing", "arrival": Vector2(1730, 500), "exit_label": "TO_CROSSING",
 		"herbs": [Vector2(600, 650), Vector2(1100, 880), Vector2(1500, 750)],
 		"enemies": [["lake_1", Vector2(1210, 840)], ["lake_2", Vector2(1510, 860)]]
 	}

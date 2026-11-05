@@ -1,0 +1,55 @@
+extends Control
+const Regions = preload("res://scripts/world/region_catalog.gd")
+var region := "crossing"
+var player_position := Vector2.ZERO
+var facing := Vector2.RIGHT
+var obstacles: Array[Dictionary] = []
+
+func _ready() -> void:
+	custom_minimum_size = Vector2(680, 280)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+func map_rect() -> Rect2:
+	var scale_factor := minf((size.x - 20) / 1920.0, (size.y - 20) / 1280.0)
+	var extent := Vector2(1920, 1280) * scale_factor
+	return Rect2((size - extent) / 2, extent)
+
+func project(point: Vector2) -> Vector2:
+	var area := map_rect()
+	return area.position + Vector2(clampf(point.x / 1920.0, 0, 1), clampf(point.y / 1280.0, 0, 1)) * area.size
+
+func _box(rect: Rect2, color: Color) -> void:
+	draw_rect(Rect2(project(rect.position), project(rect.end) - project(rect.position)), color)
+
+func _draw() -> void:
+	var area := map_rect()
+	draw_rect(area, Color("344e43"))
+	if region == "crossing":
+		_box(Rect2(737, 0, 70, 1280), Color("507c88"))
+		draw_line(project(Vector2(0, 610)), project(Vector2(1920, 476)), Color("aa9f7e"), 7)
+		_box(Rect2(719, 475, 105, 150), Color("d6c29c"))
+	else:
+		_box(Rect2(570, 100, 820, 330), Color("507c88"))
+		_box(Rect2(670, 390, 620, 115), Color("507c88"))
+		draw_line(project(Vector2(0, 650)), project(Vector2(1920, 650)), Color("aa9f7e"), 7)
+	for obstacle in obstacles:
+		if obstacle.has("center"):
+			draw_circle(project(obstacle.center), 2, Color("233e35"))
+		elif obstacle.rect.size.x < 250 and obstacle.rect.size.y < 250:
+			_box(obstacle.rect, Color("9a9d89"))
+	var definition := Regions.get_region(region)
+	var camp := project(definition.camp)
+	draw_rect(Rect2(camp - Vector2(4, 4), Vector2(8, 8)), Color("e9bd77"))
+	var exit_point := project(definition.exit)
+	draw_rect(Rect2(exit_point - Vector2(3, 6), Vector2(6, 12)), Color("c6d9cd"))
+	if definition.has("keeper"):
+		var keeper := project(definition.keeper)
+		draw_circle(keeper, 3, Color("e9e1ce"))
+	if definition.has("wayfarer"):
+		draw_circle(project(definition.wayfarer), 3, Color("e9e1ce"))
+	var player := project(player_position)
+	var direction := facing.normalized()
+	var side := direction.orthogonal()
+	draw_circle(player, 10, Color("172829"))
+	draw_colored_polygon(PackedVector2Array([player + direction * 9, player - direction * 6 + side * 5, player - direction * 6 - side * 5]), Color("fff0ba"))
+	draw_rect(area, Color("b2a783"), false, 1)

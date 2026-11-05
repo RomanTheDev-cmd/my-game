@@ -1,0 +1,513 @@
+{
+  "version": 1,
+  "status": "authored_outline_not_integrated_campaign",
+  "start": "n00",
+  "natures": [
+    "human",
+    "vampire",
+    "werewolf"
+  ],
+  "flags": [
+    "forest_done",
+    "city_done",
+    "lake_done",
+    "trust",
+    "witnesses",
+    "evidence",
+    "refused_v",
+    "refused_w",
+    "friend_saved",
+    "friend_bound",
+    "cure_trials",
+    "cured",
+    "scar"
+  ],
+  "nodes": [
+    {
+      "id": "n00",
+      "text": "opening",
+      "edges": [
+        {
+          "to": "n01",
+          "effects": {
+            "flags": {
+              "trust": true
+            }
+          }
+        },
+        {
+          "to": "n01"
+        }
+      ],
+      "mandatory": true
+    },
+    {
+      "id": "n01",
+      "text": "first_commitment",
+      "edges": [
+        {
+          "to": "n02"
+        }
+      ],
+      "mandatory": true
+    },
+    {
+      "id": "n02",
+      "text": "regional_hub",
+      "edges": [
+        {
+          "to": "n03",
+          "requires": {
+            "flags": {
+              "forest_done": false
+            }
+          }
+        },
+        {
+          "to": "n04",
+          "requires": {
+            "flags": {
+              "city_done": false
+            }
+          }
+        },
+        {
+          "to": "n05",
+          "requires": {
+            "flags": {
+              "lake_done": false
+            }
+          }
+        },
+        {
+          "to": "n06",
+          "requires": {
+            "flags": {
+              "forest_done": true,
+              "city_done": true,
+              "lake_done": true
+            }
+          }
+        }
+      ],
+      "mandatory": true
+    },
+    {
+      "id": "n03",
+      "text": "forest_history",
+      "edges": [
+        {
+          "to": "n02",
+          "effects": {
+            "flags": {
+              "forest_done": true
+            }
+          }
+        },
+        {
+          "to": "w00",
+          "requires": {
+            "flags": {
+              "refused_w": false
+            },
+            "nature": [
+              "human"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "n04",
+      "text": "city_history",
+      "edges": [
+        {
+          "to": "n02",
+          "effects": {
+            "flags": {
+              "city_done": true
+            }
+          }
+        },
+        {
+          "to": "v00",
+          "requires": {
+            "flags": {
+              "refused_v": false
+            },
+            "nature": [
+              "human"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "n05",
+      "text": "lake_history",
+      "edges": [
+        {
+          "to": "n02",
+          "effects": {
+            "flags": {
+              "lake_done": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v00",
+      "text": "vampire_offer",
+      "edges": [
+        {
+          "to": "n04",
+          "effects": {
+            "flags": {
+              "refused_v": true
+            }
+          }
+        },
+        {
+          "to": "v01",
+          "effects": {
+            "nature": "vampire"
+          },
+          "requires": {
+            "nature": [
+              "human"
+            ]
+          },
+          "voluntary": true
+        }
+      ]
+    },
+    {
+      "id": "v01",
+      "text": "vampire_cost",
+      "edges": [
+        {
+          "to": "n02",
+          "effects": {
+            "flags": {
+              "city_done": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "w00",
+      "text": "werewolf_offer",
+      "edges": [
+        {
+          "to": "n03",
+          "effects": {
+            "flags": {
+              "refused_w": true
+            }
+          }
+        },
+        {
+          "to": "w01",
+          "effects": {
+            "nature": "werewolf"
+          },
+          "requires": {
+            "nature": [
+              "human"
+            ]
+          },
+          "voluntary": true
+        }
+      ]
+    },
+    {
+      "id": "w01",
+      "text": "werewolf_cost",
+      "edges": [
+        {
+          "to": "n02",
+          "effects": {
+            "flags": {
+              "forest_done": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "n06",
+      "text": "common_discovery",
+      "edges": [
+        {
+          "to": "n07",
+          "effects": {
+            "flags": {
+              "evidence": true
+            }
+          }
+        }
+      ],
+      "mandatory": true
+    },
+    {
+      "id": "n07",
+      "text": "preparation",
+      "edges": [
+        {
+          "to": "p00",
+          "requires": {
+            "flags": {
+              "witnesses": false
+            }
+          }
+        },
+        {
+          "to": "n08",
+          "requires": {
+            "flags": {
+              "witnesses": true
+            },
+            "nature": [
+              "human"
+            ]
+          }
+        },
+        {
+          "to": "n09",
+          "requires": {
+            "nature": [
+              "vampire"
+            ]
+          }
+        },
+        {
+          "to": "n10",
+          "requires": {
+            "nature": [
+              "werewolf"
+            ]
+          }
+        }
+      ],
+      "mandatory": true
+    },
+    {
+      "id": "p00",
+      "text": "human_preparation",
+      "edges": [
+        {
+          "to": "n07",
+          "effects": {
+            "flags": {
+              "witnesses": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "n08",
+      "text": "human_rescue",
+      "edges": [
+        {
+          "to": "n11",
+          "effects": {
+            "flags": {
+              "friend_saved": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "n09",
+      "text": "vampire_rescue",
+      "edges": [
+        {
+          "to": "n11",
+          "effects": {
+            "flags": {
+              "friend_saved": true,
+              "friend_bound": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "n10",
+      "text": "werewolf_rescue",
+      "edges": [
+        {
+          "to": "n11",
+          "effects": {
+            "flags": {
+              "friend_saved": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "n11",
+      "text": "aftermath",
+      "edges": [
+        {
+          "to": "n12"
+        }
+      ],
+      "mandatory": true
+    },
+    {
+      "id": "n12",
+      "text": "identity_choice",
+      "edges": [
+        {
+          "to": "n13"
+        },
+        {
+          "to": "c00",
+          "requires": {
+            "flags": {
+              "cured": false
+            },
+            "nature": [
+              "vampire",
+              "werewolf"
+            ]
+          }
+        }
+      ],
+      "mandatory": true
+    },
+    {
+      "id": "c00",
+      "text": "return_trial",
+      "edges": [
+        {
+          "to": "c01",
+          "effects": {
+            "flags": {
+              "cure_trials": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "c01",
+      "text": "return_sacrifice",
+      "edges": [
+        {
+          "to": "c02",
+          "effects": {
+            "flags": {
+              "cured": true,
+              "scar": true
+            },
+            "nature": "human"
+          },
+          "requires": {
+            "flags": {
+              "cure_trials": true
+            }
+          },
+          "voluntary": true
+        }
+      ]
+    },
+    {
+      "id": "c02",
+      "text": "changed_human",
+      "edges": [
+        {
+          "to": "n12"
+        }
+      ]
+    },
+    {
+      "id": "n13",
+      "text": "resolution",
+      "edges": [
+        {
+          "to": "e00",
+          "requires": {
+            "flags": {
+              "witnesses": true,
+              "friend_saved": true
+            }
+          }
+        },
+        {
+          "to": "p01",
+          "requires": {
+            "flags": {
+              "witnesses": false
+            }
+          }
+        },
+        {
+          "to": "e01",
+          "requires": {
+            "flags": {
+              "friend_saved": true
+            }
+          }
+        },
+        {
+          "to": "e02",
+          "requires": {
+            "flags": {
+              "evidence": true,
+              "friend_saved": true
+            }
+          }
+        }
+      ],
+      "mandatory": true
+    },
+    {
+      "id": "p01",
+      "text": "late_reconciliation",
+      "edges": [
+        {
+          "to": "n13",
+          "effects": {
+            "flags": {
+              "witnesses": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "e00",
+      "text": "renewal",
+      "edges": [],
+      "terminal": true,
+      "must_have_flags": [
+        "friend_saved"
+      ]
+    },
+    {
+      "id": "e01",
+      "text": "release",
+      "edges": [],
+      "terminal": true,
+      "must_have_flags": [
+        "friend_saved"
+      ]
+    },
+    {
+      "id": "e02",
+      "text": "community",
+      "edges": [],
+      "terminal": true,
+      "must_have_flags": [
+        "friend_saved"
+      ]
+    }
+  ]
+}

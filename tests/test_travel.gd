@@ -66,5 +66,12 @@ func run() -> void:
 	check(not session.travel("crossing", Vector2(1730, 500)), "write failure blocks transition")
 	check(session.region == old_region and session.checkpoint == old_checkpoint, "failed transition retains complete previous state")
 	DirAccess.remove_absolute(saved_path)
+	game.world.player.position = Vector2(900, 1000)
+	for child in game.world.get_children():
+		if child.get_script() == load("res://scripts/actors/enemy.gd"):
+			child.position = Vector2(1150, 1000)
+			child.home = child.position
+	game.world._checkpoint_before_encounter()
+	check(session.checkpoint.position[0] == 900 and session.checkpoint.position[1] == 1000, "approaching encounter creates a safe pre-battle checkpoint")
 	print("Travel checks: %d; failures: %d" % [checks, failures])
 	quit(1 if failures else 0)

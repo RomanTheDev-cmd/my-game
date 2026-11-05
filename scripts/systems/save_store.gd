@@ -1,7 +1,8 @@
 extends RefCounted
 
+const Skills = preload("res://scripts/progression/skill_rules.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
-const VERSION := 2
+const VERSION := 3
 const DEFAULT_PATH := "user://save.json"
 
 static func migrate(data: Variant) -> Dictionary:
@@ -9,13 +10,25 @@ static func migrate(data: Variant) -> Dictionary:
 		return {}
 	var upgraded: Dictionary = data.duplicate(true)
 	if upgraded.get("version") == 1:
-		upgraded["version"] = VERSION
+		upgraded["version"] = 2
 		upgraded["region"] = "crossing"
 		upgraded["vitals"] = {"health": 100.0, "stamina": 100.0, "mana": 100.0}
+	if upgraded.get("version") == 2:
+		if not upgraded.get("defeated") is Array:
+			return {}
+		upgraded["version"] = VERSION
+		upgraded["xp"] = mini(100000, upgraded.defeated.size() * 20 + (40 if upgraded.get("quest") == 3 else 0))
+		upgraded["skills"] = {}
+		upgraded["aid_quest"] = 0
 	return upgraded
 
 static func validate(data: Variant) -> bool:
 	if not data is Dictionary or data.get("version") != VERSION:
+		return false
+	if not Skills.valid(data.get("xp"), data.get("skills")):
+		return false
+	var aid = data.get("aid_quest")
+	if not (aid is int or aid is float) or aid < 0 or aid > 2 or floorf(aid) != aid:
 		return false
 	if not data.get("region") is String or not Regions.valid(data.region):
 		return false

@@ -26,10 +26,25 @@ func capture() -> void:
 	session.region = "crossing"
 	session.arrival = Vector2(410, 490)
 	game._build_world()
+	game.show_map()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/map.png")
 	game.show_dialog()
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/dialog.png")
+	var session_for_skills := root.get_node("Session")
+	session_for_skills.award_xp(120)
+	game.show_skills()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/skills.png")
+	session_for_skills.inventory = {"herb": 3, "coin": 12, "potion": 1}
+	game.show_journal()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/journal.png")
 	game.show_settings()
 	await process_frame
 	await RenderingServer.frame_post_draw

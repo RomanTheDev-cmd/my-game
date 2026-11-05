@@ -28,6 +28,17 @@ func run() -> void:
 		await physics_frame
 	Input.action_release("move_right")
 	check(player.position.x > start.x + 10, "mapped action moves the actual player")
+	var map_event := InputEventAction.new()
+	map_event.action = "map"
+	map_event.pressed = true
+	game._unhandled_input(map_event)
+	check(game.current_screen == "map" and paused, "map action opens a paused map")
+	var view = game.screen.get_node("WorldMap")
+	check(view.region == "crossing" and view.player_position == player.position, "map uses current world and actual player position")
+	view.size = Vector2(680, 280)
+	check(view.map_rect().has_point(view.project(player.position)), "player marker stays within the drawn map")
+	game._unhandled_input(map_event)
+	check(game.current_screen == "game" and not paused, "map action closes map and resumes world")
 	game.show_pause()
 	start = player.position
 	Input.action_press("move_right")
@@ -109,6 +120,9 @@ func run() -> void:
 		check(enemy.health == 47, "back-facing strike misses enemy")
 		enemy.receive_damage(100, Vector2.RIGHT)
 		check(enemy.id in session.defeated, "defeat persists enemy identity")
+		check(session.xp == 20, "defeating an enemy awards experience")
+		game.world._on_defeated(enemy.id)
+		check(session.xp == 20, "same enemy cannot grant experience twice")
 	player.position = Vector2(480, 490)
 	game.show_dialog()
 	for child in game.screen.get_children():
@@ -117,7 +131,22 @@ func run() -> void:
 			break
 	check(session.inventory.get("coin") == 12, "UI completion grants the actual quest reward")
 	check(session.quest == 3 and not session.inventory.has("lantern"), "turn-in completes quest and removes item")
+	check(session.xp == 60, "quest completion adds its experience reward once")
+	game.show_skills()
+	for child in game.screen.get_children():
+		if child is Button and child.text.begins_with(TranslationServer.translate("SKILL_SWORD")):
+			child.pressed.emit()
+			break
+	check(session.skills.get("sword") == 1, "actual skill screen spends an earned point")
 	game.resume()
+	for child in game.world.get_children():
+		if child.get_script() == load("res://scripts/actors/enemy.gd") and child.health > 0:
+			player.position = child.position - Vector2(25, 0)
+			game.world._on_strike(player.position, Vector2.RIGHT)
+			check(child.health == 43, "learned sword skill increases actual melee damage")
+			break
+	player.position = Vector2(440, 470)
+	game.world.save_safe()
 	player.hurt_time = 0
 	player.blocking = false
 	player.receive_damage(200)
@@ -128,6 +157,7 @@ func run() -> void:
 			break
 	check(game.world.player.health == 100 and not paused, "retry restores health and resumes")
 	check(session.quest == 3, "checkpoint restore preserves completed quest")
+	check(session.skills.get("sword") == 1 and session.xp == 60, "saved experience and skills survive checkpoint recovery")
 	game.show_title()
 	game.show_settings()
 	for child in game.screen.get_children():
