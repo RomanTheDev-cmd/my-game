@@ -1,0 +1,26 @@
+extends SceneTree
+
+func _initialize() -> void:
+	call_deferred("capture")
+
+func capture() -> void:
+	var game = load("res://scenes/main.tscn").instantiate()
+	root.add_child(game)
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/title.png")
+	game.new_game()
+	for i in 20:
+		await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/gameplay.png")
+	game.show_dialog()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/dialog.png")
+	game.show_settings()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/settings.png")
+	print("CAPTURE_OK")
+	quit()
