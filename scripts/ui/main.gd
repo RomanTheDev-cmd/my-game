@@ -1,5 +1,6 @@
 extends Node
 const World = preload("res://scripts/world/world.gd")
+const EquipmentScreen = preload("res://scripts/ui/equipment_screen.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const MapView = preload("res://scripts/ui/world_map.gd")
 const Store = preload("res://scripts/systems/save_store.gd")
@@ -70,8 +71,10 @@ func _build_theme() -> void:
 	toast = Label.new()
 	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	toast.position = Vector2(-350, -52)
-	toast.size = Vector2(700, 46)
+	toast.offset_left = -350
+	toast.offset_right = 350
+	toast.offset_top = -52
+	toast.offset_bottom = -6
 	toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	toast.add_theme_color_override("font_color", gold)
 	toast.add_theme_color_override("font_shadow_color", Color("122021"))
@@ -136,8 +139,8 @@ func _page(key: String, width: float = 420) -> void:
 	screen.add_child(spacer)
 
 func _focus_first() -> void:
-	for child in screen.get_children():
-		if child is Button and not child.disabled:
+	for child in screen.find_children("*", "Button", true, false):
+		if not child.disabled:
 			child.grab_focus()
 			break
 
@@ -188,15 +191,15 @@ func resume() -> void:
 
 func show_pause() -> void:
 	current_screen = "pause"
-	_page("PAUSED")
-	_button("RESUME", resume)
-	_button("MAP", show_map)
-	_button("SKILLS", show_skills)
-	_button("SAVE", func():
-		world.save_safe())
-	_button("LOAD", load_game)
-	_button("SETTINGS", show_settings)
-	_button("MAIN_MENU", show_title)
+	_page("PAUSED", 600)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	screen.add_child(grid)
+	for entry in [["RESUME", resume], ["MAP", show_map], ["SKILLS", show_skills], ["EQUIPMENT", show_equipment],
+		["SAVE", world.save_safe], ["LOAD", load_game], ["SETTINGS", show_settings], ["MAIN_MENU", show_title]]:
+		_button(entry[0], entry[1], grid)
 	_focus_first()
 
 func show_settings() -> void:
@@ -225,6 +228,7 @@ func show_journal() -> void:
 	current_screen = "journal"
 	_page("JOURNAL", 620)
 	var scroll := ScrollContainer.new()
+	scroll.follow_focus = true
 	scroll.custom_minimum_size = Vector2(620, 290)
 	screen.add_child(scroll)
 	var contents := VBoxContainer.new()
@@ -255,6 +259,9 @@ func show_journal() -> void:
 	_focus_first()
 
 func show_dialog(kind: String = "keeper") -> void:
+	if kind == "merchant":
+		EquipmentScreen.shop(self)
+		return
 	if kind == "wayfarer":
 		show_aid_dialog()
 		return
@@ -376,7 +383,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause_game"):
 		if current_screen == "game":
 			show_pause()
-		elif current_screen in ["pause", "dialog", "journal", "settings", "map", "skills"] and Session.running:
+		elif current_screen in ["pause", "dialog", "journal", "settings", "map", "skills", "equipment", "shop"] and Session.running:
+			resume()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("equipment") and current_screen in ["game", "equipment"]:
+		if current_screen == "game":
+			show_equipment()
+		else:
 			resume()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("skills") and current_screen in ["game", "skills"]:
@@ -474,5 +487,10 @@ func _aid_action(event: String) -> void:
 
 func _position_toast(in_overlay: bool) -> void:
 	toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM if in_overlay else Control.PRESET_CENTER_TOP)
-	toast.position = Vector2(-350, -52 if in_overlay else 110)
-	toast.size = Vector2(700, 46)
+	toast.offset_left = -350
+	toast.offset_right = 350
+	toast.offset_top = -52 if in_overlay else 110
+	toast.offset_bottom = -6 if in_overlay else 156
+
+func show_equipment() -> void:
+	EquipmentScreen.equipment(self)

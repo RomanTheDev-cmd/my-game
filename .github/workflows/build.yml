@@ -20,7 +20,7 @@ jobs:
       - name: Install verified Godot and export templates
         run: bash tools/bootstrap.sh
       - name: Import resources
-        run: godot --headless --editor --import
+        run: bash tools/import.sh
       - name: Run regression and gameplay tests
         run: bash tools/test.sh
       - name: Export universal macOS development build

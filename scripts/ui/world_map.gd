@@ -28,20 +28,25 @@ func _draw() -> void:
 		_box(Rect2(737, 0, 70, 1280), Color("507c88"))
 		draw_line(project(Vector2(0, 610)), project(Vector2(1920, 476)), Color("aa9f7e"), 7)
 		_box(Rect2(719, 475, 105, 150), Color("d6c29c"))
-	else:
+	elif region == "lake":
 		_box(Rect2(570, 100, 820, 330), Color("507c88"))
 		_box(Rect2(670, 390, 620, 115), Color("507c88"))
 		draw_line(project(Vector2(0, 650)), project(Vector2(1920, 650)), Color("aa9f7e"), 7)
+	if region == "ruins":
+		draw_rect(area, Color("4b5356"))
 	for obstacle in obstacles:
 		if obstacle.has("center"):
 			draw_circle(project(obstacle.center), 2, Color("233e35"))
-		elif obstacle.rect.size.x < 250 and obstacle.rect.size.y < 250:
+		elif (region == "ruins" and obstacle.rect.position.x >= 80 and obstacle.rect.position.y >= 80 and obstacle.rect.end.x <= 1840 and obstacle.rect.end.y <= 1200) or (obstacle.rect.size.x < 250 and obstacle.rect.size.y < 250):
 			_box(obstacle.rect, Color("9a9d89"))
 	var definition := Regions.get_region(region)
 	var camp := project(definition.camp)
 	draw_rect(Rect2(camp - Vector2(4, 4), Vector2(8, 8)), Color("e9bd77"))
-	var exit_point := project(definition.exit)
-	draw_rect(Rect2(exit_point - Vector2(3, 6), Vector2(6, 12)), Color("c6d9cd"))
+	for portal in Regions.exits(region):
+		var exit_point := project(portal.point)
+		draw_rect(Rect2(exit_point - Vector2(3, 6), Vector2(6, 12)), Color("c6d9cd"))
+	if definition.has("merchant"):
+		draw_circle(project(definition.merchant), 3, Color("d9b88a"))
 	if definition.has("keeper"):
 		var keeper := project(definition.keeper)
 		draw_circle(keeper, 3, Color("e9e1ce"))

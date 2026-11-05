@@ -5,6 +5,9 @@ var trees: Array[Vector2] = []
 var region := "crossing"
 
 func _ready() -> void:
+	if region == "ruins":
+		_build_ruins()
+		return
 	if region == "lake":
 		_build_lake()
 		return
@@ -47,6 +50,9 @@ func _ready() -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	if region == "ruins":
+		_draw_ruins()
+		return
 	if region == "lake":
 		_draw_lake()
 		return
@@ -175,6 +181,9 @@ func _draw_lake() -> void:
 
 func _reserved(point: Vector2) -> bool:
 	var definition := Regions.get_region(region)
+	for key in ["keeper", "wayfarer", "merchant", "camp", "exit"]:
+		if definition.has(key) and point.distance_to(definition[key]) < 50:
+			return true
 	for entry in definition.enemies:
 		if point.distance_to(entry[1]) < 45:
 			return true
@@ -182,3 +191,38 @@ func _reserved(point: Vector2) -> bool:
 		if point.distance_to(herb) < 35:
 			return true
 	return false
+
+const RUIN_WALLS := [
+	Rect2(0, 0, 1920, 80), Rect2(0, 1200, 1920, 80), Rect2(0, 0, 80, 1280), Rect2(1840, 0, 80, 1280),
+	Rect2(600, 80, 40, 420), Rect2(600, 780, 40, 420), Rect2(1160, 80, 40, 300), Rect2(1160, 810, 40, 390),
+	Rect2(850, 300, 50, 90), Rect2(850, 870, 50, 90), Rect2(1420, 850, 50, 90), Rect2(1480, 300, 50, 90)
+]
+
+func _build_ruins() -> void:
+	for rect in RUIN_WALLS:
+		_obstacle(rect)
+
+func _draw_ruins() -> void:
+	draw_rect(Rect2(0, 0, 1920, 1280), Color("434b4e"))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 94023
+	for y in range(80, 1200, 32):
+		for x in range(80, 1840, 32):
+			var color: Color = [Color("505455"), Color("555856"), Color("494f52")][rng.randi_range(0, 2)]
+			draw_rect(Rect2(x, y, 31, 31), color)
+			if rng.randf() < 0.12:
+				draw_line(Vector2(x + 7, y + 4), Vector2(x + 18, y + 22), Color("363e43"), 1)
+	for rect in RUIN_WALLS:
+		draw_rect(rect, Color("343e46"))
+		draw_rect(Rect2(rect.position, Vector2(rect.size.x, minf(rect.size.y, 12))), Color("81867b"))
+		for x in range(int(rect.position.x), int(rect.end.x), 36):
+			draw_line(Vector2(x, rect.position.y), Vector2(x, minf(rect.end.y, rect.position.y + 12)), Color("535e61"), 1)
+	for x in [280, 800, 1300, 1700]:
+		draw_rect(Rect2(x, 48, 40, 32), Color("263742"))
+		draw_rect(Rect2(x + 5, 53, 13, 25), Color("65959a"))
+		draw_rect(Rect2(x + 21, 53, 13, 25), Color("b9a173"))
+	for point in [Vector2(580, 540), Vector2(580, 740), Vector2(1140, 430), Vector2(1140, 760), Vector2(1530, 590)]:
+		draw_circle(point + Vector2(0, -10), 22, Color(0.82, 0.64, 0.34, 0.09))
+		draw_rect(Rect2(point - Vector2(3, 9), Vector2(6, 10)), Color("b7ab85"))
+		draw_rect(Rect2(point - Vector2(1, 14), Vector2(2, 6)), Color("ffe6aa"))
+	_camp(Vector2(290, 870))

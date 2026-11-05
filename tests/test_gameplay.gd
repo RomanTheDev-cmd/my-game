@@ -22,6 +22,12 @@ func run() -> void:
 	game.new_game()
 	await physics_frame
 	var player = game.world.player
+	game.show_notice("SAVED")
+	await process_frame
+	var notice_bounds: Rect2 = game.toast.get_global_rect()
+	var interface_bounds: Rect2 = game.toast.get_parent().get_global_rect()
+	check(is_equal_approx(notice_bounds.get_center().x, interface_bounds.get_center().x), "gameplay notice remains horizontally centered after layout")
+	check(notice_bounds.position.x >= interface_bounds.position.x, "gameplay notice is not clipped off the left edge")
 	var start: Vector2 = player.position
 	Input.action_press("move_right")
 	for i in 12:
@@ -129,7 +135,7 @@ func run() -> void:
 		if child is Button and child.text == TranslationServer.translate("GIVE_LANTERN"):
 			child.pressed.emit()
 			break
-	check(session.inventory.get("coin") == 12, "UI completion grants the actual quest reward")
+	check(session.inventory.get("coin") == 15, "UI completion grants the actual quest reward")
 	check(session.quest == 3 and not session.inventory.has("lantern"), "turn-in completes quest and removes item")
 	check(session.xp == 60, "quest completion adds its experience reward once")
 	game.show_skills()

@@ -1,4 +1,7 @@
 extends Node
+const Loot = preload("res://scripts/items/loot_rules.gd")
+const Gear = preload("res://scripts/items/equipment_rules.gd")
+const Trade = preload("res://scripts/items/trade_rules.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const Preferences = preload("res://scripts/systems/preferences_store.gd")
 const Items = preload("res://scripts/items/inventory_rules.gd")
@@ -18,6 +21,9 @@ var region := "crossing"
 var aid_quest := 0
 var quest := 0
 var defeated: Array = []
+var gear_owned: Array = Gear.DEFAULT_OWNED.duplicate()
+var equipped: Dictionary = Gear.DEFAULT_EQUIPPED.duplicate()
+var opened: Array = []
 var inventory: Dictionary = {"herb": 0}
 var gathered: Array = []
 var checkpoint: Dictionary = {}
@@ -41,6 +47,9 @@ func fresh() -> void:
 	quest = 0
 	aid_quest = 0
 	defeated = []
+	gear_owned = Gear.DEFAULT_OWNED.duplicate()
+	equipped = Gear.DEFAULT_EQUIPPED.duplicate()
+	opened = []
 	gathered = []
 	inventory = {"herb": 0}
 	arrival = Vector2(410, 490)
@@ -51,10 +60,14 @@ func fresh() -> void:
 func snapshot(position: Vector2, current_vitals: Dictionary = {}) -> Dictionary:
 	return {"version": Store.VERSION, "region": region, "position": [position.x, position.y], "difficulty": difficulty,
 		"vitals": (vitals if current_vitals.is_empty() else current_vitals).duplicate(),
+		"gear_owned": gear_owned.duplicate(), "equipped": equipped.duplicate(), "opened": opened.duplicate(),
 		"xp": xp, "skills": skills.duplicate(),
 		"quest": quest, "aid_quest": aid_quest, "defeated": defeated.duplicate(), "inventory": inventory.duplicate(), "gathered": gathered.duplicate()}
 
 func apply(data: Dictionary) -> void:
+	gear_owned = data.gear_owned.duplicate()
+	equipped = data.equipped.duplicate()
+	opened = data.opened.duplicate()
 	xp = int(data.xp)
 	skills = data.skills.duplicate()
 	vitals = data.vitals.duplicate()
@@ -183,3 +196,47 @@ func advance_aid(event: String, mana: float) -> Dictionary:
 		award_xp(30)
 	changed.emit()
 	return result
+
+func equip_item(id: String) -> bool:
+	var result := Gear.equip(id, gear_owned, equipped)
+	if result.is_empty():
+		return false
+	equipped = result
+	changed.emit()
+	return true
+
+func unequip_slot(slot: String) -> void:
+	if equipped.has(slot):
+		equipped[slot] = ""
+		changed.emit()
+
+func trade_item(id: String, selling: bool, position: Vector2, current_vitals: Dictionary) -> bool:
+	var result := Trade.sell(id, inventory, gear_owned, equipped) if selling else Trade.buy(id, inventory, gear_owned)
+	if result.is_empty():
+		notice.emit("TRADE_FAILED")
+		return false
+	var data := snapshot(position, current_vitals)
+	data.inventory = result.inventory
+	data.gear_owned = result.owned
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("TRADE_DONE")
+	return true
+
+func claim_chest(chest: Dictionary, position: Vector2, current_vitals: Dictionary) -> bool:
+	var result := Loot.claim(chest, inventory, gear_owned, opened, defeated)
+	if result.is_empty():
+		notice.emit("CHEST_UNAVAILABLE")
+		return false
+	var data := snapshot(position, current_vitals)
+	data.inventory = result.inventory
+	data.gear_owned = result.owned
+	data.opened = result.opened
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("CHEST_OPENED")
+	return true

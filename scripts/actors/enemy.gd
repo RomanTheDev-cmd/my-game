@@ -3,6 +3,16 @@ signal defeated(id: String)
 var id := ""
 var target: CharacterBody2D
 var health := 75.0
+var max_health := 75.0
+var attack_damage := 20.0
+var attack_distance := 36.0
+var attack_reach := 48.0
+var windup_duration := 0.65
+var recovery_duration := 0.8
+var move_speed := 58.0
+var aggro_range := 210.0
+var reward_xp := 20
+var coin_reward := 3
 var home := Vector2.ZERO
 var state := "idle"
 var timer := 0.0
@@ -16,6 +26,7 @@ var path_timer := 0.0
 var path_target := Vector2.INF
 
 func _ready() -> void:
+	health = max_health
 	collision_layer = 4
 	collision_mask = 1
 	home = global_position
@@ -38,23 +49,23 @@ func _physics_process(delta: float) -> void:
 	if state == "windup":
 		velocity = Vector2.ZERO
 		if timer == 0:
-			if target.global_position.distance_to(attack_origin) < 48:
+			if target.global_position.distance_to(attack_origin) < attack_reach:
 				var toward := (target.global_position - attack_origin).normalized()
 				if toward.dot(attack_direction) > 0.15 and (navigation == null or navigation.segment_clear(attack_origin, target.global_position)):
-					target.receive_damage(20)
+					target.receive_damage(attack_damage)
 			state = "recover"
-			timer = 0.8
+			timer = recovery_duration
 	elif state == "recover":
 		velocity = Vector2.ZERO
 		if timer == 0:
 			state = "idle"
-	elif offset.length() < 36 and (navigation == null or navigation.segment_clear(global_position, target.global_position)):
+	elif offset.length() < attack_distance and (navigation == null or navigation.segment_clear(global_position, target.global_position)):
 		state = "windup"
-		timer = 0.65
+		timer = windup_duration
 		attack_origin = global_position
 		attack_direction = offset.normalized()
-	elif offset.length() < 210 and global_position.distance_to(home) < 320:
-		velocity = _steer(target.global_position, 58)
+	elif offset.length() < aggro_range and global_position.distance_to(home) < 320:
+		velocity = _steer(target.global_position, move_speed)
 	else:
 		velocity = _steer(home, 35) if global_position.distance_to(home) > 8 else Vector2.ZERO
 	move_and_slide()
@@ -77,11 +88,11 @@ func receive_damage(amount: float, direction: Vector2) -> void:
 
 func _draw() -> void:
 	if state == "windup":
-		draw_arc(Vector2(0, -6), 38, attack_direction.angle() - 1.1, attack_direction.angle() + 1.1,
+		draw_arc(Vector2(0, -6), attack_reach - 10, attack_direction.angle() - 1.1, attack_direction.angle() + 1.1,
 			16, Color(0.9, 0.45, 0.27, 0.8), 3)
-	if health < 75:
+	if health < max_health or max_health > 100:
 		draw_rect(Rect2(-14, -35, 28, 3), Color("302e38"))
-		draw_rect(Rect2(-14, -35, 28 * maxf(0, health) / 75, 3), Color("bd7568"))
+		draw_rect(Rect2(-14, -35, 28 * maxf(0, health) / max_health, 3), Color("bd7568"))
 
 func _steer(destination: Vector2, speed: float) -> Vector2:
 	if navigation == null:

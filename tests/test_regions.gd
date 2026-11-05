@@ -11,7 +11,7 @@ func check(condition: bool, message: String) -> void:
 		printerr("FAIL: ", message)
 
 func _initialize() -> void:
-	var state := {"version": 3, "aid_quest": 0, "xp": 0, "skills": {}, "region": "lake", "position": [250, 650], "difficulty": 1,
+	var state := {"version": 4, "gear_owned": ["road_sword", "cloth", "wood_shield"], "equipped": {"weapon": "road_sword", "armor": "cloth", "shield": "wood_shield"}, "opened": [], "aid_quest": 0, "xp": 0, "skills": {}, "region": "lake", "position": [250, 650], "difficulty": 1,
 		"vitals": {"health": 60, "stamina": 50, "mana": 45}, "quest": 0, "inventory": {"herb": 1}, "defeated": ["lake_1"], "gathered": ["lake:herb_600_650"]}
 	check(Store.write_game(state, PATH) == OK, "save accepts a known second region")
 	var restored := Store.load_game(PATH)
@@ -24,7 +24,7 @@ func _initialize() -> void:
 	file.store_string(JSON.stringify(legacy))
 	file.close()
 	var migrated := Store.load_game(PATH)
-	check(migrated.get("version") == 3 and migrated.get("region") == "crossing", "v1 save migrates into original region")
+	check(migrated.get("version") == 4 and migrated.get("region") == "crossing", "v1 save migrates into original region")
 	check(migrated.get("position", []).size() == 2 and Vector2(migrated.position[0], migrated.position[1]) == Vector2(410, 490), "migration retains player location")
 	check(migrated.get("vitals", {}).get("health") == 100, "legacy saves receive safe default vitals")
 	legacy.version = 99

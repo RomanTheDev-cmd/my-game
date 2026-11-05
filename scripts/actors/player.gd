@@ -1,4 +1,6 @@
 extends CharacterBody2D
+const Gear = preload("res://scripts/items/equipment_rules.gd")
+const GearVisual = preload("res://scripts/items/gear_visual.gd")
 const Magic = preload("res://scripts/magic/magic_rules.gd")
 const Rules = preload("res://scripts/combat/combat_rules.gd")
 signal died
@@ -16,6 +18,7 @@ var hurt_time := 0.0
 var blocking := false
 var dodge_direction := Vector2.ZERO
 var sprite: Sprite2D
+var gear_visual: Node2D
 var magic_cooldown := 0.0
 var aim_with_mouse := false
 
@@ -31,6 +34,8 @@ func _ready() -> void:
 	sprite.texture = preload("res://assets/sprites/traveler.png")
 	sprite.position.y = -12
 	add_child(sprite)
+	gear_visual = GearVisual.new()
+	add_child(gear_visual)
 	var camera := Camera2D.new()
 	camera.zoom = Vector2(1.65, 1.65)
 	camera.position_smoothing_enabled = true
@@ -56,7 +61,7 @@ func _physics_process(delta: float) -> void:
 		if get_global_mouse_position().distance_to(global_position) > 3 and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			facing = (get_global_mouse_position() - global_position).normalized()
 		attack_time = 0.18
-		attack_cooldown = 0.42
+		attack_cooldown = Gear.weapon(Session.equipped).cooldown
 		strike.emit(global_position, facing)
 	if Input.is_action_just_pressed("dodge") and stamina >= 28 and dodge_time == 0:
 		stamina -= 28
@@ -73,6 +78,8 @@ func _physics_process(delta: float) -> void:
 		cast_magic("light")
 	if Input.is_action_just_pressed("use_potion"):
 		drink_potion()
+	gear_visual.scale.x = -1 if facing.x < 0 else 1
+	gear_visual.queue_redraw()
 	sprite.flip_h = facing.x < 0
 	sprite.position.y = -12 + (sin(Time.get_ticks_msec() * 0.018) if velocity.length() > 1 else 0)
 	modulate = modulate.lerp(Color.WHITE, delta * 8)
@@ -82,8 +89,8 @@ func _physics_process(delta: float) -> void:
 func receive_damage(amount: float) -> void:
 	if health <= 0 or hurt_time > 0:
 		return
-	var reduced := amount * (1.0 - 0.1 * int(Session.skills.get("ward", 0)))
-	var hit := Rules.damage(reduced, Session.difficulty, blocking, dodge_time > 0)
+	var reduced := amount * (1.0 - 0.1 * int(Session.skills.get("ward", 0))) * (1.0 - Gear.reduction(Session.equipped))
+	var hit := Rules.damage(reduced, Session.difficulty, blocking, dodge_time > 0, Gear.block(Session.equipped))
 	if hit <= 0:
 		return
 	if blocking:
@@ -104,7 +111,7 @@ func restore() -> void:
 func _draw() -> void:
 	if attack_time > 0:
 		var angle := facing.angle()
-		draw_arc(Vector2(0, -8), 32, angle - 0.95, angle + 0.95, 12, Color(0.94, 0.85, 0.63, attack_time / 0.18), 3)
+		draw_arc(Vector2(0, -8), Gear.weapon(Session.equipped).reach * 0.72, angle - 0.95, angle + 0.95, 12, Color(0.94, 0.85, 0.63, attack_time / 0.18), 3)
 	if blocking:
 		draw_arc(Vector2(0, -6), 17, facing.angle() - 0.9, facing.angle() + 0.9, 8, Color("c9b989"), 3)
 

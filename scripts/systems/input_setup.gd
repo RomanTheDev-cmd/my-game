@@ -6,7 +6,7 @@ static func install() -> void:
 		"move_up": [KEY_W, KEY_UP], "move_down": [KEY_S, KEY_DOWN],
 		"attack": [KEY_J], "dodge": [KEY_SPACE], "block": [KEY_K],
 		"cast": [KEY_F], "use_potion": [KEY_H], "heal": [KEY_Q], "interact": [KEY_E], "pause_game": [KEY_ESCAPE],
-		"skills": [KEY_C], "map": [KEY_M], "journal": [KEY_TAB], "save_game": [KEY_F5], "load_game": [KEY_F9],
+		"equipment": [KEY_I], "skills": [KEY_C], "map": [KEY_M], "journal": [KEY_TAB], "save_game": [KEY_F5], "load_game": [KEY_F9],
 		"fullscreen": [KEY_F11]
 	}
 	for action in bindings:

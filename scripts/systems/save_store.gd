@@ -1,8 +1,9 @@
 extends RefCounted
 
+const Gear = preload("res://scripts/items/equipment_rules.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
-const VERSION := 3
+const VERSION := 4
 const DEFAULT_PATH := "user://save.json"
 
 static func migrate(data: Variant) -> Dictionary:
@@ -16,15 +17,31 @@ static func migrate(data: Variant) -> Dictionary:
 	if upgraded.get("version") == 2:
 		if not upgraded.get("defeated") is Array:
 			return {}
-		upgraded["version"] = VERSION
+		upgraded["version"] = 3
 		upgraded["xp"] = mini(100000, upgraded.defeated.size() * 20 + (40 if upgraded.get("quest") == 3 else 0))
 		upgraded["skills"] = {}
 		upgraded["aid_quest"] = 0
+	if upgraded.get("version") == 3:
+		if not upgraded.get("inventory") is Dictionary or not upgraded.get("defeated") is Array:
+			return {}
+		var coins = upgraded.inventory.get("coin", 0)
+		if not (coins is int or coins is float) or coins < 0 or coins > 999 or floorf(coins) != coins:
+			return {}
+		upgraded["version"] = VERSION
+		upgraded["gear_owned"] = Gear.DEFAULT_OWNED.duplicate()
+		upgraded["equipped"] = Gear.DEFAULT_EQUIPPED.duplicate()
+		upgraded["opened"] = []
+		upgraded.inventory["coin"] = mini(999, int(coins) + upgraded.defeated.size() * 3)
 	return upgraded
 
 static func validate(data: Variant) -> bool:
 	if not data is Dictionary or data.get("version") != VERSION:
 		return false
+	if not Gear.valid(data.get("gear_owned"), data.get("equipped")) or not data.get("opened") is Array:
+		return false
+	for id in data.opened:
+		if not id is String:
+			return false
 	if not Skills.valid(data.get("xp"), data.get("skills")):
 		return false
 	var aid = data.get("aid_quest")
