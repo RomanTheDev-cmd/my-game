@@ -1,4 +1,7 @@
 extends Node2D
+const Trial = preload("res://scripts/quests/trial_rules.gd")
+const BossEnemy = preload("res://scripts/actors/boss_enemy.gd")
+const Waterworks = preload("res://scripts/world/waterworks_landscape.gd")
 const Factions = preload("res://scripts/factions/faction_rules.gd")
 const Items = preload("res://scripts/items/inventory_rules.gd")
 const Commission = preload("res://scripts/quests/commission_rules.gd")
@@ -22,6 +25,8 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var boss: CharacterBody2D
+var trial_markers: Dictionary = {}
 var npcs: Dictionary = {}
 var commission_markers: Dictionary = {}
 var salvage_markers: Array[Node2D] = []
@@ -45,11 +50,17 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = Workshop.new() if Session.region == "workshop" else Landscape.new()
+	landscape = Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new())
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
 	_build_commission_objects()
+	for kind in definition.get("trial_sites", {}):
+		var marker := CommissionMarker.new()
+		marker.kind = "wheel" if kind == "altar" else "archive"
+		marker.position = definition.trial_sites[kind]
+		add_child(marker)
+		trial_markers[kind] = marker
 	navigation = Navigator.new()
 	navigation.configure(self)
 	for kind in Schedule.KINDS:
@@ -95,12 +106,17 @@ func _ready() -> void:
 		if entry[0] in Session.defeated:
 			continue
 		var kind: String = entry[2] if entry.size() > 2 else "melee"
-		var enemy = RangedEnemy.new() if kind == "ranged" else (HeavyEnemy.new() if kind == "heavy" else Enemy.new())
+		var enemy = BossEnemy.new() if kind == "boss" else (RangedEnemy.new() if kind == "ranged" else (HeavyEnemy.new() if kind == "heavy" else Enemy.new()))
 		enemy.id = entry[0]
 		enemy.position = entry[1]
 		enemy.target = player
 		enemy.navigation = navigation
-		enemy.defeated.connect(_on_defeated)
+		if kind == "boss":
+			boss = enemy
+			boss.armed = "waterworks:awakened" in Session.gathered
+			boss.victory_requested.connect(record_boss_victory)
+		else:
+			enemy.defeated.connect(_on_defeated)
 		add_child(enemy)
 
 	var environment := WorldAmbience.new()
@@ -110,8 +126,10 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_trial_environment)
 	Session.changed.connect(_update_commission_environment)
 	_update_commission_environment()
+	_update_trial_environment()
 
 func _process(delta: float) -> void:
 	time += delta
@@ -137,7 +155,9 @@ func _process(delta: float) -> void:
 		Session.set_fullscreen(not Session.fullscreen)
 
 func safe_to_rest() -> bool:
+	if is_instance_valid(boss) and (boss.awaiting_record or boss.engaged): return false
 	for child in get_children():
+		if child is BossEnemy and not child.armed: continue
 		if child is Enemy and child.global_position.distance_to(player.global_position) < child.aggro_range + 20:
 			return false
 	for arrow in get_tree().get_nodes_in_group("hostile_projectiles"):
@@ -153,6 +173,11 @@ func save_safe() -> void:
 		Session.notice.emit("CHECKPOINT_UNSAFE")
 
 func nearby_key() -> String:
+	if is_instance_valid(boss) and boss.awaiting_record and player.position.distance_to(boss.position) < 65:
+		return "TRIAL_RECORD"
+	for kind in trial_markers:
+		if player.position.distance_to(trial_markers[kind].position) < 48:
+			return "TRIAL_SITE_" + kind.to_upper()
 	if merchant.visible and player.position.distance_to(merchant.position) < 45:
 		return "MERCHANT_NAME" if Schedule.shop_open(Session.world_state.minutes) else "MERCHANT_CLOSED"
 	if keeper.visible and player.position.distance_to(keeper.position) < 50:
@@ -188,6 +213,12 @@ func nearby_key() -> String:
 func interact() -> void:
 	_sync_context()
 	var key := nearby_key()
+	if key == "TRIAL_RECORD":
+		record_boss_victory()
+		return
+	if key.begins_with("TRIAL_SITE_"):
+		dialog_requested.emit("trial:" + key.trim_prefix("TRIAL_SITE_").to_lower())
+		return
 	if key.begins_with("TO_"):
 		for portal in Regions.exits(Session.region):
 			if portal.label == key:
@@ -290,6 +321,7 @@ func _checkpoint_before_encounter() -> void:
 	if player.health <= 0 or not safe_to_rest():
 		return
 	for child in get_children():
+		if child is BossEnemy and not child.armed: continue
 		if child is Enemy and not encounter_checkpoints.has(child.id):
 			var distance: float = child.position.distance_to(player.position)
 			if distance > child.aggro_range + 20 and distance < child.aggro_range + 80:
@@ -457,3 +489,29 @@ func brew_with_tender() -> bool:
 		return false
 	_sync_context()
 	return Session.brew_with_tender(player.position, player_vitals())
+
+func can_trial(event: String) -> bool:
+	if not Trial.SITES.has(event) or player.health <= 0 or not safe_to_rest(): return false
+	var site: Array = Trial.SITES[event]
+	if Session.region != site[0]: return false
+	var point: Vector2 = npcs.wright.position if site[1] == "wright" and npcs.wright.visible else definition.get("trial_sites", {}).get(site[1], Vector2.INF)
+	return player.position.distance_to(point) < 52 and not Trial.transition(Session.gathered, Session.defeated, Session.opened, Session.inventory, int(Session.world_state.commission.stage), event).is_empty()
+
+func trial_action(event: String) -> bool:
+	if not can_trial(event): return false
+	_sync_context()
+	return Session.trial_event(event, player.position, player_vitals())
+
+func _update_trial_environment() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	if is_instance_valid(boss): boss.armed = "waterworks:awakened" in Session.gathered
+	for kind in trial_markers:
+		trial_markers[kind].done = "waterworks:" + kind in Session.gathered or (kind == "altar" and "waterworks:awakened" in Session.gathered)
+		trial_markers[kind].queue_redraw()
+
+func record_boss_victory() -> void:
+	if not is_instance_valid(boss) or not boss.awaiting_record or player.health <= 0: return
+	_sync_context()
+	if Session.finish_guardian(player.position, player_vitals()):
+		boss.queue_free()
+		boss = null

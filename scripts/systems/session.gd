@@ -1,4 +1,5 @@
 extends Node
+const Trial = preload("res://scripts/quests/trial_rules.gd")
 const Factions = preload("res://scripts/factions/faction_rules.gd")
 const Commission = preload("res://scripts/quests/commission_rules.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
@@ -351,4 +352,32 @@ func brew_with_tender(position: Vector2, current_vitals: Dictionary) -> bool:
 		return false
 	apply(data)
 	notice.emit("POTION_CRAFTED")
+	return true
+
+func trial_event(event: String, position: Vector2, current_vitals: Dictionary) -> bool:
+	var outcome := Trial.transition(gathered, defeated, opened, inventory, int(world_state.commission.stage), event)
+	if outcome.is_empty(): return false
+	var data := snapshot(position, current_vitals)
+	data.gathered = outcome.gathered
+	data.opened = outcome.opened
+	data.inventory = outcome.inventory
+	data.xp = mini(100000, xp + int(outcome.xp))
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("TRIAL_UPDATED")
+	return true
+
+func finish_guardian(position: Vector2, current_vitals: Dictionary) -> bool:
+	if region != "waterworks" or Trial.stage(gathered, defeated, opened) != 3 or not Trial.valid(gathered, defeated, opened, int(world_state.commission.stage)):
+		return false
+	var data := snapshot(position, current_vitals)
+	data.defeated.append(Trial.BOSS)
+	data.xp = mini(100000, xp + 120)
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("TRIAL_VICTORY")
 	return true

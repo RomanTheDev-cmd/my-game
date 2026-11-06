@@ -19,14 +19,22 @@ const REGIONS := {
 	"workshop": {
 		"location": "LOCATION_WORKSHOP", "description": "REGION_WORKSHOP", "camp": Vector2(380, 730),
 		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1800, 1160), "exit_label": "TO_LAKE",
+		"extra_exits": [{"point": Vector2(1800, 420), "destination": "waterworks", "arrival": Vector2(240, 650), "label": "TO_WATERWORKS", "direction": 1}],
 		"warden": Vector2(360, 540), "wright": Vector2(570, 540), "tender": Vector2(520, 870),
 		"herbs": [Vector2(580, 850), Vector2(780, 1080)],
 		"enemies": [["workshop_1", Vector2(1230, 800)], ["workshop_archer", Vector2(1550, 900), "ranged"]],
 		"commission_sites": {"wheel": Vector2(960, 600), "archive": Vector2(1450, 460), "workbench": Vector2(680, 600), "cache": Vector2(1540, 1050)},
 		"salvage": [{"id": "workshop:scrap_1", "point": Vector2(730, 450)}, {"id": "workshop:scrap_2", "point": Vector2(860, 900)}, {"id": "workshop:scrap_3", "point": Vector2(1320, 360)}]
 	},
+	"waterworks": {
+		"indoor": true, "location": "LOCATION_WATERWORKS", "description": "REGION_WATERWORKS", "camp": Vector2(300, 800),
+		"exit": Vector2(135, 650), "destination": "workshop", "arrival": Vector2(1760, 420), "exit_label": "TO_WORKSHOP",
+		"herbs": [Vector2(450, 1000)], "enemies": [["waterworks_guardian", Vector2(1350, 650), "boss"]],
+		"trial_sites": {"north": Vector2(550, 390), "south": Vector2(690, 1000), "altar": Vector2(820, 650)},
+		"chests": [{"id": "waterworks_supplies", "point": Vector2(1660, 1020), "requires": ["waterworks_guardian"], "items": {"coin": 18, "potion": 2}}]
+	},
 	"ruins": {
-		"location": "LOCATION_RUINS", "description": "REGION_RUINS", "camp": Vector2(290, 870),
+		"indoor": true, "location": "LOCATION_RUINS", "description": "REGION_RUINS", "camp": Vector2(290, 870),
 		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1840, 650), "exit_label": "TO_LAKE",
 		"herbs": [Vector2(430, 940)],
 		"enemies": [["ruins_1", Vector2(780, 650)], ["ruins_2", Vector2(1040, 560), "ranged"], ["ruins_warden", Vector2(1400, 550), "heavy"]],

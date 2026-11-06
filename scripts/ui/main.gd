@@ -1,4 +1,6 @@
 extends Node
+const Trial = preload("res://scripts/quests/trial_rules.gd")
+const TrialScreen = preload("res://scripts/ui/trial_screen.gd")
 const CommissionScreen = preload("res://scripts/ui/commission_screen.gd")
 const World = preload("res://scripts/world/world.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
@@ -17,6 +19,9 @@ var toast: Label
 var toast_time := 0.0
 var human_label: Label
 var shield_label: Label
+var boss_panel: VBoxContainer
+var boss_title: Label
+var boss_bar: ProgressBar
 var health_bar: ProgressBar
 var stamina_bar: ProgressBar
 var mana_bar: ProgressBar
@@ -275,6 +280,7 @@ func show_journal() -> void:
 	if Session.aid_quest > 0:
 		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	TrialScreen.journal(self, contents)
 	CommissionScreen.journal(self, contents)
 	_label(contents, "INVENTORY", 23).add_theme_color_override("font_color", gold)
 	var entries := 0
@@ -294,6 +300,9 @@ func show_journal() -> void:
 	_button("BACK", resume).grab_focus()
 
 func show_dialog(kind: String = "keeper") -> void:
+	if kind.begins_with("trial:"):
+		show_trial(kind.trim_prefix("trial:"))
+		return
 	if kind.begins_with("commission:"):
 		show_commission(kind.trim_prefix("commission:"))
 		return
@@ -372,6 +381,17 @@ func _build_hud() -> void:
 	location_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	region_label = _label(location, "REGION", 13)
 	region_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	boss_panel = VBoxContainer.new()
+	boss_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	boss_panel.offset_left = -170
+	boss_panel.offset_right = 170
+	boss_panel.offset_top = 80
+	boss_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(boss_panel)
+	boss_title = _label(boss_panel, "TRIAL_BOSS", 15)
+	boss_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_bar = _bar(boss_panel, Color("c09b69"))
+	boss_panel.hide()
 	var bottom := VBoxContainer.new()
 	bottom.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom.offset_left = 24
@@ -412,7 +432,7 @@ func update_hud() -> void:
 	var minutes: float = Session.world_state.minutes
 	var weather := Clock.weather(minutes, int(Session.world_state.seed))
 	region_label.text = "%s · %s %d · %s" % [tr(world.definition.description), tr("DAY"), floori(minutes / 1440) + 1, Clock.time_text(minutes)]
-	if Session.region != "ruins":
+	if not world.definition.get("indoor", false):
 		region_label.text += " · " + tr("WEATHER_" + weather.to_upper())
 	shield_label.text = tr("AEGIS_STATUS") % [roundi(world.player.shield_strength), world.player.shield_time] if world.player.shield_time > 0 and world.player.shield_strength > 0 else ""
 	health_bar.value = world.player.health
@@ -421,11 +441,20 @@ func update_hud() -> void:
 	health_bar.tooltip_text = "%s: %d/100" % [tr("HP"), int(world.player.health)]
 	stamina_bar.tooltip_text = "%s: %d/100" % [tr("STAMINA"), int(world.player.stamina)]
 	mana_bar.tooltip_text = "%s: %d/100" % [tr("MANA"), int(world.player.mana)]
+	boss_panel.visible = is_instance_valid(world.boss) and world.boss.armed and world.boss.position.distance_to(world.player.position) < 620
+	if boss_panel.visible:
+		boss_bar.value = 100.0 * world.boss.health / world.boss.max_health
+		boss_title.text = tr("TRIAL_RECORD" if world.boss.awaiting_record else "TRIAL_BOSS_PHASE_%d" % world.boss.phase)
 	var commission_stage := int(Session.world_state.commission.stage)
 	if commission_stage > 0 and (commission_stage < 6 or Session.aid_quest != 1):
 		quest_label.text = tr("COMMISSION_HINT_%d" % commission_stage)
 	else:
 		quest_label.text = tr("AID_QUEST_1") if Session.aid_quest == 1 else tr("QUEST_%d" % Session.quest)
+	var trial_stage := Trial.stage(Session.gathered, Session.defeated, Session.opened)
+	if trial_stage > 0 and trial_stage < 5:
+		quest_label.text = tr("TRIAL_HINT_%d" % trial_stage)
+	if is_instance_valid(world.boss) and world.boss.awaiting_record:
+		quest_label.text = tr("TRIAL_RECORD_HELP")
 	var near: String = world.nearby_key()
 	prompt.text = tr("INTERACT") + " · " + tr(near) if near != "" else ""
 
@@ -619,3 +648,6 @@ func _notification(what: int) -> void:
 
 func show_commission(target: String) -> void:
 	CommissionScreen.show_dialog(self, target)
+
+func show_trial(target: String) -> void:
+	TrialScreen.show_dialog(self, target)

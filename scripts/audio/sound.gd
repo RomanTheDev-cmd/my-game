@@ -121,7 +121,7 @@ func _process(delta: float) -> void:
 		fire_voice.stop()
 	var weather := Clock.weather(Session.world_state.minutes, int(Session.world_state.seed))
 	var targets := {"wind": 0.0, "rain": 0.0, "room": 0.0}
-	if Session.region == "ruins":
+	if Regions.get_region(Session.region).get("indoor", false):
 		targets.room = 0.6
 	else:
 		targets.wind = 0.25 if weather == "rain" else 0.6
@@ -139,7 +139,7 @@ func _process(delta: float) -> void:
 		voice.volume_db = linear_to_db(maxf(0.0001, ambience_levels[id])) - 16
 
 func _notice(key: String) -> void:
-	if key in ["HERB_FOUND", "LANTERN_FOUND", "CHEST_OPENED", "TRADE_DONE", "POTION_CRAFTED", "LEVEL_UP", "ENCOUNTER_SAVED", "SALVAGE_FOUND", "COMMISSION_UPDATED"]:
+	if key in ["HERB_FOUND", "LANTERN_FOUND", "CHEST_OPENED", "TRADE_DONE", "POTION_CRAFTED", "LEVEL_UP", "ENCOUNTER_SAVED", "SALVAGE_FOUND", "COMMISSION_UPDATED", "TRIAL_UPDATED", "TRIAL_VICTORY"]:
 		play_ui("collect")
 	elif key == "RESTED":
 		play_ui("heal")

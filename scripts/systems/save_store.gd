@@ -1,4 +1,5 @@
 extends RefCounted
+const Trial = preload("res://scripts/quests/trial_rules.gd")
 
 const WorldState = preload("res://scripts/world/living/world_state.gd")
 const Gear = preload("res://scripts/items/equipment_rules.gd")
@@ -104,6 +105,8 @@ static func validate(data: Variant) -> bool:
 			return false
 		if data.inventory[key] < 0 or data.inventory[key] > 999 or floorf(data.inventory[key]) != data.inventory[key]:
 			return false
+	if not Trial.valid(data.gathered, data.defeated, data.opened, int(data.world_state.commission.stage)):
+		return false
 	if int(data.quest) == 2 and data.inventory.get("lantern", 0) != 1:
 		return false
 	if int(data.quest) != 2 and data.inventory.get("lantern", 0) != 0:

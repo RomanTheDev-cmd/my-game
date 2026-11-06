@@ -184,5 +184,48 @@ func capture() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/reward_capacity.png")
+	session_for_skills.world_state.commission = {"stage": 6, "survey": ["wheel", "archive"], "heard": ["wardens", "tenders"], "supply": "craft", "settlement": "shared"}
+	session_for_skills.gathered = ["waterworks:charter", "waterworks:north", "waterworks:south", "waterworks:awakened"]
+	session_for_skills.region = "waterworks"
+	session_for_skills.arrival = Vector2(1190, 650)
+	session_for_skills.inventory.coin = 25
+	game._build_world()
+	game.resume()
+	game.world.boss.set_physics_process(false)
+	game.world.player.set_physics_process(false)
+	for i in 20: await process_frame
+	for kind in ["sweep", "charge", "pulse"]:
+		var boss = game.world.boss
+		boss.phase = 2 if kind == "pulse" else 1
+		boss.health = 190 if kind == "pulse" else 420
+		boss.attack_spec = boss.Rules.attack(boss.phase, {"sweep": 0, "charge": 1, "pulse": 1}[kind])
+		boss.state = "windup"
+		boss.timer = 0.7
+		boss.attack_origin = boss.position
+		boss.attack_direction = Vector2.LEFT
+		boss.queue_redraw()
+		game.update_hud()
+		await process_frame
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("res://build/boss_" + kind + ".png")
+	game.show_map()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/waterworks_map.png")
+	game.resume()
+	game.world.player.position = Vector2(820, 650)
+	game.show_trial("altar")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/trial_dialog.png")
+	game.resume()
+	game.world.boss.awaiting_record = true
+	game.world.boss.state = "yielded"
+	game.world.boss.health = 0
+	game.world.boss.queue_redraw()
+	game.world.player.position = game.world.boss.position - Vector2(40, 0)
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/boss_retry_record.png")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)

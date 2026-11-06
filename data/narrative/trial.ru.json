@@ -1,0 +1,12 @@
+{
+  "status": "runtime side episode of act I, not complete campaign",
+  "region": "waterworks",
+  "quest": "scripts/quests/trial_rules.gd",
+  "boss": "mechanical guardian, no forced death of a person",
+  "principles": [
+    "preparation via two physical observations",
+    "readable phases and permanent retreat",
+    "victory saved before rewards/despawn",
+    "no mandatory transformation"
+  ]
+}

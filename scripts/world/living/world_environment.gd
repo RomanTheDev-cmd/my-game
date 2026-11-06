@@ -1,4 +1,5 @@
 extends Node2D
+const Regions = preload("res://scripts/world/region_catalog.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const Overlay = preload("res://scripts/world/living/weather_overlay.gd")
 var region := "crossing"
@@ -21,7 +22,7 @@ func _ready() -> void:
 	add_child(modulation)
 	hero_light = _light(Vector2.ZERO, Color("b8d7dc"), 1.0, 0.55)
 	var points: Array = [get_parent().definition.camp]
-	if region == "ruins":
+	if Regions.get_region(region).get("indoor", false):
 		points.append_array([Vector2(580, 540), Vector2(580, 740), Vector2(1140, 430), Vector2(1140, 760), Vector2(1530, 590)])
 	for point in points:
 		_light(point + Vector2(0, -10), Color("f6c88a"), 0.7, 0.9)
@@ -29,7 +30,7 @@ func _ready() -> void:
 	layer.layer = 0
 	add_child(layer)
 	var overlay := Overlay.new()
-	overlay.indoor = region == "ruins"
+	overlay.indoor = Regions.get_region(region).get("indoor", false)
 	layer.add_child(overlay)
 	_process(0)
 
@@ -46,7 +47,7 @@ func _light(point: Vector2, color: Color, texture_scale: float, energy: float) -
 func _process(_delta: float) -> void:
 	var daylight := Clock.daylight(Session.world_state.minutes)
 	var color := Color("5c6e8f").lerp(Color.WHITE, daylight)
-	if region == "ruins":
+	if Regions.get_region(region).get("indoor", false):
 		color = Color("9da6b5")
 	else:
 		var weather := Clock.weather(Session.world_state.minutes, int(Session.world_state.seed))
@@ -55,6 +56,6 @@ func _process(_delta: float) -> void:
 		elif weather == "fog":
 			color *= Color("d9e2df")
 	modulation.color = color
-	hero_light.visible = daylight < 0.85 or region == "ruins"
+	hero_light.visible = daylight < 0.85 or Regions.get_region(region).get("indoor", false)
 	if is_instance_valid(player):
 		hero_light.global_position = player.global_position + Vector2(0, -8)
