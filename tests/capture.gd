@@ -1,4 +1,5 @@
 extends SceneTree
+const PackFixture = preload("res://tests/support/pack_fixture.gd")
 const NatureFixture = preload("res://tests/support/nature_fixture.gd")
 const TestExit = preload("res://tests/support/test_exit.gd")
 
@@ -268,7 +269,7 @@ func capture() -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/dialogue_vampire.png")
 	game.screen.find_child("dialogue_honest", true, false).pressed.emit()
-	session_for_skills.nature = {"kind": "human", "form": "human", "blood": 100.0, "stage": 4, "history": ["vampire"], "cure": 3, "gift": "scar"}
+	session_for_skills.nature = {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 4, "history": ["vampire"], "cure": 3, "gift": "scar"}
 	session_for_skills.gathered.append_array(["nature:release_water", "nature:release_garden"])
 	game.world.player._update_nature_visuals()
 	game.update_hud()
@@ -287,5 +288,58 @@ func capture() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/dialogue_oath.png")
+	var pack_screen = load("res://scripts/ui/pack_screen.gd")
+	PackFixture.prepared(session_for_skills)
+	session_for_skills.region = "thicket"
+	session_for_skills.arrival = Vector2(450, 600)
+	game._build_world()
+	game.resume()
+	pack_screen.show_page(game, "tracker", "accept")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/pack_consent.png")
+	PackFixture.wolf(session_for_skills)
+	session_for_skills.region = "thicket"
+	session_for_skills.arrival = Vector2(340, 500)
+	game._build_world()
+	game.resume()
+	game.world.player.shift_form()
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/wolf_tracking.png")
+	game.show_map()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/thicket_map.png")
+	PackFixture.wolf(session_for_skills, true)
+	session_for_skills.region = "thicket"
+	session_for_skills.arrival = Vector2(1120, 650)
+	session_for_skills.world_state.minutes = 5760
+	game._build_world()
+	game.resume()
+	game.world.player.shift_form("hybrid")
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/hybrid_moon.png")
+	game.show_nature()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/pack_status.png")
+	game.resume()
+	game.world.player.shift_form()
+	game.world.player.position = game.world.npcs.tracker.position
+	game.world.interact()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/dialogue_werewolf.png")
+	game.screen.find_child("dialogue_pack_word", true, false).pressed.emit()
+	session_for_skills.nature = {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 4, "history": ["werewolf"], "cure": 3, "gift": "wild_scar"}
+	session_for_skills.gathered.append_array(["pack:return_started", "pack:release_den", "pack:release_word", "pack:returned"])
+	game.world.player._update_nature_visuals()
+	game.update_hud()
+	game.show_dialog("tracker")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/dialogue_wild_returned.png")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)

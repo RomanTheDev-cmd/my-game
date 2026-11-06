@@ -1,6 +1,8 @@
 extends Node
 const DialogueRules = preload("res://scripts/nature/dialogue_rules.gd")
 const DialogueScreen = preload("res://scripts/ui/dialogue_screen.gd")
+const Pack = preload("res://scripts/nature/pack_rules.gd")
+const PackScreen = preload("res://scripts/ui/pack_screen.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const NatureScreen = preload("res://scripts/ui/nature_screen.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
@@ -285,6 +287,7 @@ func show_journal() -> void:
 	if Session.aid_quest > 0:
 		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	PackScreen.journal(self, contents)
 	NatureScreen.journal(self, contents)
 	TrialScreen.journal(self, contents)
 	CommissionScreen.journal(self, contents)
@@ -310,6 +313,9 @@ func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void
 	if kind == "merchant_closed": role = "merchant"
 	if not bypass_reaction and DialogueRules.GROUPS.has(role) and DialogueRules.context(Session.nature) != "":
 		DialogueScreen.show_page(self, role, kind if not kind.begins_with("reaction:") else "")
+		return
+	if kind == "tracker" or kind.begins_with("pack:"):
+		show_pack("tracker" if kind == "tracker" else kind.trim_prefix("pack:"))
 		return
 	if kind.begins_with("trial:"):
 		show_trial(kind.trim_prefix("trial:"))
@@ -350,8 +356,10 @@ func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void
 			show_dialog())
 	if Session.quest == 3:
 		_button("COMMISSION_TITLE", show_commission.bind("keeper"))
-	if Session.nature.kind == "vampire" or Session.nature.stage == 4:
+	if Session.nature.kind == "vampire" or "vampire" in Session.nature.history:
 		_button("NATURE_CURE_TITLE", show_nature.bind("keeper")).name = "nature_keeper"
+	if "werewolf" in Session.nature.history:
+		_button("PACK_TITLE", show_pack.bind("keeper")).name = "pack_keeper"
 	_button("LATER" if Session.quest == 0 else "CLOSE", resume)
 	_focus_first()
 
@@ -443,6 +451,7 @@ func update_hud() -> void:
 		return
 	human_label.text = "%s · %s %d" % [tr("NATURE_KIND_" + Session.nature.kind.to_upper()), tr("LEVEL"), Skills.level(Session.xp)]
 	nature_label.text = tr("NATURE_BLOOD") % Session.nature.blood + " · U / V / N" if Session.nature.kind == "vampire" else (tr("NATURE_KEYS") if Session.nature.gift != "" else "")
+	if Session.nature.kind == "werewolf": nature_label.text = tr("PACK_RESOLVE") % Session.nature.resolve + " · U/Y/V/N"
 	location_label.text = tr(world.definition.location)
 	var minutes: float = Session.world_state.minutes
 	var weather := Clock.weather(minutes, int(Session.world_state.seed))
@@ -470,6 +479,8 @@ func update_hud() -> void:
 		quest_label.text = tr("TRIAL_HINT_%d" % trial_stage)
 	if Session.nature.stage in [1, 2] or (Session.nature.kind == "vampire" and Session.nature.cure in [1, 2]):
 		quest_label.text = tr(NatureScreen.hint(Session.nature))
+	if Pack.stage(Session.gathered) in [1, 2] or (Session.nature.kind == "werewolf" and (Session.nature.cure > 0 or Session.nature.gift == "wild")):
+		quest_label.text = tr(PackScreen.hint(Session.nature, Session.gathered))
 	if is_instance_valid(world.boss) and world.boss.awaiting_record:
 		quest_label.text = tr("TRIAL_RECORD_HELP")
 	var near: String = world.nearby_key()
@@ -601,7 +612,7 @@ func show_aid_dialog() -> void:
 		_button("AID_HERBS", _aid_action.bind("herbs")).disabled = int(Session.inventory.get("herb", 0)) < 3
 		_button("AID_COINS", _aid_action.bind("coins")).disabled = int(Session.inventory.get("coin", 0)) < 8
 		_button("AID_MAGIC", _aid_action.bind("magic")).disabled = world.player.mana < 35 or not Nature.can_spell(Session.nature, "heal")
-	if "waterworks_report" in Session.opened:
+	if "waterworks_report" in Session.opened and "werewolf" not in Session.nature.history:
 		_button("NATURE_TITLE", show_nature.bind("wayfarer")).name = "nature_invitation"
 	_button("CLOSE", resume)
 	_focus_first()
@@ -677,3 +688,6 @@ func show_trial(target: String) -> void:
 
 func show_nature(target: String = "status") -> void:
 	NatureScreen.show_page(self, target)
+
+func show_pack(target: String = "tracker") -> void:
+	PackScreen.show_page(self, target)

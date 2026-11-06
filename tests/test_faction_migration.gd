@@ -28,7 +28,7 @@ func run() -> void:
 	legacy.gear_owned.append("iron_sword")
 	legacy.equipped.weapon = "iron_sword"
 	var upgraded := Store.migrate(legacy)
-	check(upgraded.get("version") == 7 and upgraded.get("world_state", {}).get("reputation", {}).has("wardens"), "old world gains new relationships through migration")
+	check(upgraded.get("version") == 8 and upgraded.get("world_state", {}).get("reputation", {}).has("wardens"), "old world gains new relationships through migration")
 	check(upgraded.get("world_state", {}).get("commission", {}).get("stage") == 0, "old hero receives unstarted new quest line")
 	check(Store.validate(upgraded), "migrated profile satisfies complete current save schema")
 	check(upgraded.world_state.minutes == 2489.5 and upgraded.world_state.seed == 712 and upgraded.world_state.next_event == 2610, "migration retains clock, weather seed and event deadline")
@@ -38,7 +38,7 @@ func run() -> void:
 	check(legacy.version == 5 and legacy.world_state.reputation.size() == 1 and not legacy.world_state.has("commission"), "migration leaves original v5 data untouched")
 	check(Store.write_game(legacy, "user://factions-migration.json") == OK, "legacy profile writes through normal migration path")
 	var loaded := Store.load_game("user://factions-migration.json")
-	check(loaded.version == 7 and loaded.world_state.minutes == 2489.5 and loaded.inventory.coin == 17, "current disk reload retains migrated state without rerunning rewards")
+	check(loaded.version == 8 and loaded.world_state.minutes == 2489.5 and loaded.inventory.coin == 17, "current disk reload retains migrated state without rerunning rewards")
 	var bad := upgraded.duplicate(true)
 	bad.world_state.reputation.erase("tenders")
 	check(not Store.validate(bad), "missing group rejected instead of resetting all relationships")

@@ -12,7 +12,7 @@ func check(condition: bool, message: String) -> void:
 		printerr("FAIL: ", message)
 
 func _initialize() -> void:
-	var valid := {"version": 7, "nature": {"kind": "human", "form": "human", "blood": 100.0, "stage": 0, "history": [], "cure": 0, "gift": ""}, "world_state": {"minutes": 1020.0, "seed": 43119, "npcs": {}, "commission": {"stage": 0, "survey": [], "heard": [], "supply": "", "settlement": ""}, "reputation": {"roadfolk": 0, "wardens": 0, "tenders": 0}, "seen": [], "next_event": 1050.0, "active": {}}, "gear_owned": ["road_sword", "cloth", "wood_shield"], "equipped": {"weapon": "road_sword", "armor": "cloth", "shield": "wood_shield"}, "opened": [], "aid_quest": 0, "xp": 0, "skills": {}, "region": "crossing", "position": [410, 490], "difficulty": 1, "quest": 1,
+	var valid := {"version": 8, "nature": {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 0, "history": [], "cure": 0, "gift": ""}, "world_state": {"minutes": 1020.0, "seed": 43119, "npcs": {}, "commission": {"stage": 0, "survey": [], "heard": [], "supply": "", "settlement": ""}, "reputation": {"roadfolk": 0, "wardens": 0, "tenders": 0}, "seen": [], "next_event": 1050.0, "active": {}}, "gear_owned": ["road_sword", "cloth", "wood_shield"], "equipped": {"weapon": "road_sword", "armor": "cloth", "shield": "wood_shield"}, "opened": [], "aid_quest": 0, "xp": 0, "skills": {}, "region": "crossing", "position": [410, 490], "difficulty": 1, "quest": 1,
 		"vitals": {"health": 75, "stamina": 60, "mana": 40}, "defeated": ["road_1"], "inventory": {"herb": 2}, "gathered": ["herb_650_670"]}
 	check(Store.load_game(PATH).is_empty(), "missing save is an explicit empty result")
 	check(Store.write_game(valid, PATH) == OK, "valid state writes successfully")

@@ -1,12 +1,14 @@
 extends RefCounted
 const Factions = preload("res://scripts/factions/faction_rules.gd")
-const GROUPS := {"keeper": "roadfolk", "merchant": "roadfolk", "wayfarer": "roadfolk", "wright": "roadfolk", "warden": "wardens", "tender": "tenders"}
-const ANSWERS := {"vampire": ["honest", "distance"], "returned": ["explain", "silence"], "oath": ["pledge", "listen"]}
+const GROUPS := {"keeper": "roadfolk", "merchant": "roadfolk", "wayfarer": "roadfolk", "wright": "roadfolk", "warden": "wardens", "tender": "tenders", "tracker": "tenders"}
+const ANSWERS := {"vampire": ["honest", "distance"], "returned": ["explain", "silence"], "oath": ["pledge", "listen"], "werewolf": ["pack_word", "reserve"], "wild_returned": ["remember_pack", "leave_silence"]}
 static func context(nature: Dictionary) -> String:
-	if nature.form != "human": return "form"
+	if nature.form != "human": return "wild_form" if nature.kind == "werewolf" else "form"
+	if nature.kind == "werewolf": return "werewolf"
+	if "werewolf" in nature.history: return "wild_returned"
 	if nature.kind == "vampire": return "vampire"
 	if "vampire" in nature.history: return "returned"
-	return "oath" if nature.gift == "oath" else ""
+	return "oath" if nature.gift in ["oath", "trail_oath"] else ""
 static func memory(flags: Array, kind: String, current: String) -> String:
 	for answer in ANSWERS.get(current, []):
 		if "dialogue:%s:%s:%s" % [kind, current, answer] in flags: return answer
@@ -30,6 +32,6 @@ static func resolve(nature: Dictionary, flags: Array, reputation: Dictionary, ki
 	if not GROUPS.has(kind) or answer not in ANSWERS.get(current, []) or not memory(flags, kind, current).is_empty() or not valid(flags): return {}
 	var next := flags.duplicate()
 	next.append("dialogue:%s:%s:%s" % [kind, current, answer])
-	var change := 1 if answer in ["honest", "explain", "pledge"] else 0
+	var change := 1 if answer in ["honest", "explain", "pledge", "pack_word", "remember_pack"] else 0
 	var trust := Factions.change(reputation, {GROUPS[kind]: change})
 	return {} if trust.is_empty() else {"gathered": next, "reputation": trust}

@@ -1,4 +1,5 @@
 extends CharacterBody2D
+const Pack = preload("res://scripts/nature/pack_rules.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
@@ -9,6 +10,7 @@ const Rules = preload("res://scripts/combat/combat_rules.gd")
 signal died
 signal strike(origin: Vector2, direction: Vector2)
 signal cast_spell(origin: Vector2, direction: Vector2, damage: float, kind: String)
+signal howled(origin: Vector2)
 signal stats_changed
 var health := 100.0
 var stamina := 100.0
@@ -22,6 +24,7 @@ var blocking := false
 var dodge_direction := Vector2.ZERO
 var sprite: Sprite2D
 var gear_visual: Node2D
+var scent_time := 0.0
 var nature_cooldown := 0.0
 var magic_cooldown := 0.0
 var aim_with_mouse := false
@@ -53,10 +56,12 @@ func _ready() -> void:
 	camera.limit_right = 1920
 	camera.limit_bottom = 1280
 	add_child(camera)
+	_update_nature_visuals()
 
 func _physics_process(delta: float) -> void:
 	if health <= 0:
 		return
+	scent_time = maxf(0, scent_time - delta)
 	nature_cooldown = maxf(0, nature_cooldown - delta)
 	magic_cooldown = maxf(0, magic_cooldown - delta)
 	shield_recharge = maxf(0, shield_recharge - delta)
@@ -83,7 +88,7 @@ func _physics_process(delta: float) -> void:
 		dodge_direction = facing
 		Sound.play_at("dodge", global_position)
 	blocking = Input.is_action_pressed("block") and stamina > 0 and dodge_time == 0 and Session.nature.form == "human"
-	velocity = dodge_direction * 310 if dodge_time > 0 else direction * (55 if blocking else (145 if Session.nature.form == "battle" else 115))
+	velocity = dodge_direction * 310 if dodge_time > 0 else direction * (55 if blocking else movement_speed())
 	var previous_position := global_position
 	move_and_slide()
 	if dodge_time == 0 and direction.length() > 0.15:
@@ -96,10 +101,10 @@ func _physics_process(delta: float) -> void:
 	stamina = minf(100, stamina + delta * (10 if blocking else 24))
 	var exposed := Nature.sunlight(Session.nature, Clock.daylight(Session.world_state.minutes), Regions.get_region(Session.region).get("indoor", false)) > 1
 	mana = minf(100, mana + delta * (0.8 if exposed else 2.0))
-	if Session.nature.kind == "vampire" and Session.nature.blood > 20 and Clock.daylight(Session.world_state.minutes) < 0.5:
-		health = minf(100, health + delta * 1.5)
+	health = minf(100, health + delta * Nature.regeneration(Session.nature, Session.world_state.minutes))
 	if Input.is_action_just_pressed("nature_power"): use_nature_power()
 	if Input.is_action_just_pressed("shift_form"): shift_form()
+	if Input.is_action_just_pressed("hybrid_form"): shift_form("hybrid")
 	if Input.is_action_just_pressed("heal"):
 		cast_magic("heal")
 	if Input.is_action_just_pressed("cast"):
@@ -122,7 +127,8 @@ func _physics_process(delta: float) -> void:
 func receive_damage(amount: float) -> void:
 	if health <= 0 or hurt_time > 0:
 		return
-	var reduced := amount * (1.0 - 0.1 * int(Session.skills.get("ward", 0))) * (1.0 - Gear.reduction(Session.equipped))
+	var armor: float = 0.0 if Session.nature.kind == "werewolf" and Session.nature.form != "human" else Gear.reduction(Session.equipped)
+	var reduced := amount * (1.0 - 0.1 * int(Session.skills.get("ward", 0))) * (1.0 - armor)
 	reduced *= Nature.sunlight(Session.nature, Clock.daylight(Session.world_state.minutes), Regions.get_region(Session.region).get("indoor", false))
 	var guarded: bool = blocking and Session.nature.form == "human"
 	var hit := Rules.damage(reduced, Session.difficulty, guarded, dodge_time > 0, Gear.block(Session.equipped))
@@ -142,6 +148,7 @@ func receive_damage(amount: float) -> void:
 		died.emit()
 
 func restore() -> void:
+	scent_time = 0
 	nature_cooldown = 0
 	magic_cooldown = 0
 	shield_strength = 0
@@ -156,6 +163,21 @@ func restore() -> void:
 	stats_changed.emit()
 
 func _draw() -> void:
+	if Session.nature.form == "wolf":
+		var sign_value := -1 if facing.x < 0 else 1
+		draw_rect(Rect2(-15, -15, 30, 15), Color("73776c"))
+		draw_rect(Rect2(9 if sign_value > 0 else -21, -23, 14, 13), Color("9c9f8c"))
+		draw_rect(Rect2(12 if sign_value > 0 else -18, -27, 5, 7), Color("6a7266"))
+		draw_line(Vector2(-sign_value * 13, -12), Vector2(-sign_value * 23, -18), Color("8a9281"), 5)
+		for x in [-11, 8]: draw_rect(Rect2(x, -2, 4, 8), Color("535f54"))
+	if Session.nature.form == "hybrid":
+		draw_rect(Rect2(-13, -31, 26, 31), Color("626e5e"))
+		draw_rect(Rect2(-10, -47, 20, 17), Color("9ca38c"))
+		for x in [-20, 14]:
+			draw_rect(Rect2(x, -30, 6, 26), Color("7d8d72"))
+			for i in 3: draw_rect(Rect2(x + i * 2, -4, 1, 8), Color("d5d8b9"))
+	if Session.nature.kind == "werewolf" and Session.nature.form != "human" and Pack.moon(Session.world_state.minutes) > 0.8:
+		draw_arc(Vector2(0, -12), 26, 0, TAU, 24, Color(0.7, 0.8, 0.9, 0.5), 1)
 	if Session.nature.form == "battle":
 		draw_rect(Rect2(-11, -25, 22, 25), Color("433844"))
 		draw_rect(Rect2(-8, -40, 16, 15), Color("c5c5bb"))
@@ -229,18 +251,39 @@ func _input(event: InputEvent) -> void:
 		aim_with_mouse = false
 
 func weapon_stats() -> Dictionary:
-	return {"damage": 46.0, "reach": 58.0, "cooldown": 0.5} if Session.nature.form == "battle" else Gear.weapon(Session.equipped)
+	match Session.nature.form:
+		"wolf": return {"damage": 22.0, "reach": 40.0, "cooldown": 0.42}
+		"hybrid":
+			var bonus := 1.0 + (Pack.moon(Session.world_state.minutes) * 0.15 if Clock.daylight(Session.world_state.minutes) < 0.5 else 0.0)
+			return {"damage": 50.0 * bonus, "reach": 65.0, "cooldown": 0.68}
+		"battle": return {"damage": 46.0, "reach": 58.0, "cooldown": 0.5}
+	return Gear.weapon(Session.equipped)
+func movement_speed() -> float:
+	return {"wolf": 175.0, "hybrid": 125.0, "battle": 145.0}.get(Session.nature.form, 115.0)
+func can_track() -> bool:
+	return (Session.nature.kind == "werewolf" and Session.nature.form == "wolf") or scent_time > 0
 
 func can_nature_power() -> bool:
-	if health <= 0 or dodge_time > 0 or nature_cooldown > 0 or Session.nature.form != "human": return false
-	if Session.nature.gift in ["oath", "scar"]: return mana >= 32
+	if health <= 0 or dodge_time > 0 or nature_cooldown > 0: return false
+	if Session.nature.kind == "werewolf": return Session.nature.resolve >= 15 and stamina >= 20
+	if Session.nature.form != "human": return false
+	if Session.nature.gift in ["oath", "scar", "trail_oath", "wild_scar"]: return mana >= 32
 	return Session.nature.kind == "vampire" and mana >= 16 and Session.nature.blood >= 12
 
 func use_nature_power() -> bool:
 	if not can_nature_power():
 		Session.notice.emit("NATURE_POWER_UNAVAILABLE")
 		return false
-	if Session.nature.kind == "vampire":
+	if Session.nature.kind == "werewolf":
+		Session.nature.resolve -= 15
+		if Session.nature.resolve == 0: Session.nature.form = "human"
+		stamina -= 20
+		health = minf(100, health + 12)
+		scent_time = 12
+		nature_cooldown = 8
+		howled.emit(global_position)
+		Sound.play_at("magic", global_position)
+	elif Session.nature.kind == "vampire":
 		mana -= 16
 		Session.nature.blood -= 12
 		var direction := facing
@@ -251,18 +294,19 @@ func use_nature_power() -> bool:
 		Sound.play_at("magic", global_position)
 	else:
 		mana -= 32
-		shield_strength = 45 if Session.nature.gift == "oath" else 40
+		shield_strength = 45 if Session.nature.gift in ["oath", "trail_oath"] else 40
 		shield_time = 8
+		if Session.nature.gift == "wild_scar": scent_time = 6
 		nature_cooldown = 12
 		Sound.play_at("block", global_position)
 	stats_changed.emit()
 	return true
 
-func shift_form() -> bool:
-	if health <= 0 or (dodge_time > 0 and Session.nature.form != "battle"): return false
-	var next := Nature.shift(Session.nature)
+func shift_form(requested: String = "") -> bool:
+	if health <= 0 or (dodge_time > 0 and Session.nature.form == "human"): return false
+	var next := Nature.shift(Session.nature, requested)
 	if next.is_empty():
-		Session.notice.emit("NATURE_FORM_UNAVAILABLE")
+		Session.notice.emit("PACK_FORM_UNAVAILABLE" if Session.nature.kind == "werewolf" else "NATURE_FORM_UNAVAILABLE")
 		return false
 	Session.nature = next
 	_update_nature_visuals()

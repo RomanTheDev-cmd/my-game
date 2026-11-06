@@ -19,7 +19,7 @@ func run() -> void:
 	old.world_state.minutes = 2345.5
 	var original := old.duplicate(true)
 	var upgraded: Dictionary = session.Store.migrate(old)
-	check(upgraded.get("version") == 7 and upgraded.get("nature", {}).get("kind") == "human", "v6 gains a human nature without retroactive transformation")
+	check(upgraded.get("version") == 8 and upgraded.get("nature", {}).get("kind") == "human", "v6 gains a human nature without retroactive transformation")
 	check(old == original, "migration never mutates its caller's old save")
 	check(upgraded.world_state == old.world_state and upgraded.inventory == old.inventory and upgraded.vitals.health == 62, "nature migration preserves whole world inventory and wounds")
 	check(session.Store.validate(upgraded), "migrated v6 satisfies complete current schema")
@@ -30,7 +30,7 @@ func run() -> void:
 		bad.nature.erase(field)
 		check(not session.Store.validate(bad), "missing nature field rejects damaged save")
 	var bad := upgraded.duplicate(true)
-	bad.nature.kind = "werewolf"
+	bad.nature.kind = "wraith"
 	check(not session.Store.validate(bad), "unsupported nature is not silently accepted as an implemented path")
 	bad = upgraded.duplicate(true)
 	bad.nature.blood = INF

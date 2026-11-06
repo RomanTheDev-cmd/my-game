@@ -1,5 +1,8 @@
 extends Node2D
 const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
+const Pack = preload("res://scripts/nature/pack_rules.gd")
+const Thicket = preload("res://scripts/world/thicket_landscape.gd")
+const TrackingCue = preload("res://scripts/world/tracking_cue.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
 const BossEnemy = preload("res://scripts/actors/boss_enemy.gd")
@@ -27,6 +30,8 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var pack_markers: Dictionary = {}
+var tracking_cue: Node2D
 var boss: CharacterBody2D
 var trial_markers: Dictionary = {}
 var npcs: Dictionary = {}
@@ -52,11 +57,17 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new())
+	landscape = Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
 	_build_commission_objects()
+	for kind in definition.get("pack_sites", {}):
+		var marker := CommissionMarker.new()
+		marker.kind = "scrap" if kind.begins_with("trail_") else "archive"
+		marker.position = definition.pack_sites[kind]
+		add_child(marker)
+		pack_markers[kind] = marker
 	for kind in definition.get("trial_sites", {}):
 		var marker := CommissionMarker.new()
 		marker.kind = "wheel" if kind == "altar" else "archive"
@@ -104,6 +115,11 @@ func _ready() -> void:
 	player.died.connect(func(): player_died.emit())
 	player.strike.connect(_on_strike)
 	player.cast_spell.connect(_on_cast_spell)
+	player.howled.connect(_on_howl)
+	tracking_cue = TrackingCue.new()
+	tracking_cue.hide()
+	tracking_cue.z_index = 4
+	add_child(tracking_cue)
 	for entry in definition.enemies:
 		if entry[0] in Session.defeated:
 			continue
@@ -128,13 +144,16 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_pack_environment)
 	Session.changed.connect(_update_trial_environment)
 	Session.changed.connect(_update_commission_environment)
 	_update_commission_environment()
 	_update_trial_environment()
+	_update_pack_environment()
 
 func _process(delta: float) -> void:
 	time += delta
+	_update_tracking()
 	if Session.running and player.health > 0:
 		Session.advance_world(delta)
 	_update_npcs()
@@ -186,9 +205,11 @@ func nearby_key() -> String:
 		return "KEEPER_NAME"
 	if wayfarer.visible and player.position.distance_to(wayfarer.position) < 45:
 		return "AID_NAME"
-	for kind in ["warden", "wright", "tender"]:
+	for kind in ["warden", "wright", "tender", "tracker"]:
 		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
 			return kind.to_upper() + "_NAME"
+	for target in pack_markers:
+		if player.position.distance_to(pack_markers[target].position) < 45: return "PACK_SITE_" + target.to_upper()
 	for target in commission_markers:
 		if player.position.distance_to(commission_markers[target].position) < 45:
 			return "COMMISSION_" + target.to_upper()
@@ -221,10 +242,16 @@ func interact() -> void:
 	if key.begins_with("TRIAL_SITE_"):
 		dialog_requested.emit("trial:" + key.trim_prefix("TRIAL_SITE_").to_lower())
 		return
-	if Session.nature.form != "human" and (key.ends_with("_NAME") or key.begins_with("COMMISSION_") or key.begins_with("TRIAL_SITE_")):
-		var role: String = {"KEEPER_NAME": "keeper", "MERCHANT_NAME": "merchant", "AID_NAME": "wayfarer", "WARDEN_NAME": "warden", "WRIGHT_NAME": "wright", "TENDER_NAME": "tender"}.get(key, "")
+	if Session.nature.form != "human" and (key.ends_with("_NAME") or key.begins_with("COMMISSION_") or key.begins_with("TRIAL_SITE_") or key.begins_with("PACK_SITE_")):
+		var role: String = {"KEEPER_NAME": "keeper", "MERCHANT_NAME": "merchant", "AID_NAME": "wayfarer", "WARDEN_NAME": "warden", "WRIGHT_NAME": "wright", "TENDER_NAME": "tender", "TRACKER_NAME": "tracker"}.get(key, "")
 		if role != "": dialog_requested.emit("reaction:" + role)
 		else: Session.notice.emit("NATURE_RETURN_FORM")
+		return
+	if key == "TRACKER_NAME":
+		dialog_requested.emit("tracker")
+		return
+	if key.begins_with("PACK_SITE_"):
+		dialog_requested.emit("pack:" + key.trim_prefix("PACK_SITE_").to_lower())
 		return
 	if key.begins_with("TO_"):
 		for portal in Regions.exits(Session.region):
@@ -549,3 +576,43 @@ func dialogue_action(kind: String, answer: String) -> bool:
 	if not can_dialogue(kind, answer): return false
 	_sync_context()
 	return Session.dialogue_event(kind, answer, player.position, player_vitals())
+
+func can_pack(event: String) -> bool:
+	if not Pack.SITES.has(event) or player.health <= 0 or not safe_to_rest(): return false
+	var site: Array = Pack.SITES[event]
+	if Session.region != site[0]: return false
+	var point: Vector2 = npcs[site[1]].position if npcs.has(site[1]) and npcs[site[1]].visible else definition.get("pack_sites", {}).get(site[1], Vector2.INF)
+	return player.position.distance_to(point) < 52 and not Pack.resolve(Session.nature, Session.gathered, Session.opened, player.mana, event).is_empty()
+func pack_action(event: String) -> bool:
+	if not can_pack(event): return false
+	_sync_context()
+	if not Session.pack_event(event, player.position, player_vitals()): return false
+	player.mana = Session.vitals.mana
+	return true
+func _update_pack_environment() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	for kind in pack_markers:
+		pack_markers[kind].done = "pack:" + kind in Session.gathered or (kind == "den" and "pack:release_den" in Session.gathered)
+		pack_markers[kind].queue_redraw()
+	_update_tracking()
+func _update_tracking() -> void:
+	if not is_instance_valid(player) or not is_instance_valid(tracking_cue): return
+	var nearest := Vector2.INF
+	var distance := 500.0
+	for chest in chests:
+		var entry: Dictionary = chest.get_meta("definition")
+		if not entry.get("hidden", false): continue
+		var offset: float = player.position.distance_to(chest.position)
+		chest.visible = offset < 40 or (player.can_track() and offset < 260)
+		if entry.id not in Session.opened and offset < distance:
+			nearest = chest.position
+			distance = offset
+	tracking_cue.visible = player.can_track() and nearest != Vector2.INF
+	if tracking_cue.visible:
+		tracking_cue.position = player.position + Vector2(0, -12)
+		tracking_cue.direction = player.position.direction_to(nearest)
+		tracking_cue.queue_redraw()
+func _on_howl(origin: Vector2) -> void:
+	for child in get_children():
+		if child is Enemy and child.health > 0 and child.position.distance_to(origin) < 150 and navigation.segment_clear(origin, child.position): child.apply_slow(3, 0.55)
+	_update_tracking()

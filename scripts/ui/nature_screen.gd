@@ -1,4 +1,5 @@
 extends RefCounted
+const Pack = preload("res://scripts/nature/pack_rules.gd")
 const Rules = preload("res://scripts/nature/nature_rules.gd")
 static func _text(ui: Node, parent: Node, key: String, size: int = 17) -> Label:
 	var text: Label = ui._label(parent, key, size)
@@ -28,6 +29,9 @@ static func show_page(ui: Node, target: String = "status", confirm: String = "")
 	_text(ui, contents, "NATURE_KIND_" + state.kind.to_upper(), 23).add_theme_color_override("font_color", ui.gold)
 	if state.kind == "vampire":
 		_text(ui, contents, "").text = ui.tr("NATURE_BLOOD") % state.blood
+	if state.kind == "werewolf":
+		_text(ui, contents, "").text = ui.tr("PACK_RESOLVE") % state.resolve
+		_text(ui, contents, "").text = ui.tr("PACK_MOON") % roundi(Pack.moon(Session.world_state.minutes) * 100)
 	_text(ui, contents, "NATURE_GIFT_" + (state.gift.to_upper() if state.gift != "" else "NONE"), 16)
 	if target == "status":
 		_text(ui, contents, "NATURE_STATUS_" + state.kind.to_upper(), 16)
@@ -35,10 +39,14 @@ static func show_page(ui: Node, target: String = "status", confirm: String = "")
 			var power: Button = ui._button("NATURE_POWER", _power.bind(ui), contents)
 			power.name = "nature_power"
 			power.disabled = not ui.world.player.can_nature_power()
-		if state.kind == "vampire":
+		if state.kind in ["vampire", "werewolf"]:
 			var shift: Button = ui._button("NATURE_SHIFT", _shift.bind(ui), contents)
 			shift.name = "nature_shift"
 			shift.disabled = Rules.shift(state).is_empty()
+		if state.kind == "werewolf":
+			var hybrid: Button = ui._button("PACK_HYBRID", _hybrid.bind(ui), contents)
+			hybrid.name = "nature_hybrid"
+			hybrid.disabled = Rules.shift(state, "hybrid").is_empty()
 	else:
 		_text(ui, contents, "NATURE_DIALOG_" + target.to_upper(), 18)
 		_text(ui, contents, hint(state), 16)
@@ -73,6 +81,13 @@ static func journal(ui: Node, contents: Node) -> void:
 	_text(ui, contents, hint(Session.nature), 16)
 
 static func hint(state: Dictionary) -> String:
+	if state.kind == "werewolf": return "PACK_RETURN_HINT_%d" % int(state.cure) if state.cure > 0 else ("PACK_HINT_MASTER" if state.gift == "wild_master" else "PACK_HINT_3")
+	if state.gift == "wild_scar": return "PACK_HINT_RETURNED"
+	if state.gift == "trail_oath": return "PACK_HINT_4"
 	if state.kind == "vampire" and state.cure > 0: return "NATURE_CURE_HINT_%d" % int(state.cure)
 	if state.kind == "human" and state.stage == 3: return "NATURE_HINT_HUMAN_3"
 	return "NATURE_HINT_%d" % int(state.stage)
+
+static func _hybrid(ui: Node) -> void:
+	ui.world.player.shift_form("hybrid")
+	show_page(ui)

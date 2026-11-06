@@ -85,7 +85,7 @@ func run() -> void:
 	check(session.nature.blood == 60, "returning shape never refills blood")
 	player.health = 61
 	check(session.save_at(player.position, game.world.player_vitals()) and session.load_saved() and player.health == 61 and session.nature.blood == 60, "saving and reloading nature does not replenish actual health or blood")
-	session.nature = {"kind": "human", "form": "human", "blood": 100.0, "stage": 3, "history": [], "cure": 0, "gift": "oath"}
+	session.nature = {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 3, "history": [], "cure": 0, "gift": "oath"}
 	player.mana = 100
 	player.nature_cooldown = 0
 	check(player.use_nature_power() and player.mana == 68 and player.shield_strength == 45 and player.shield_time == 8, "human specialization grants its own real defensive ability")

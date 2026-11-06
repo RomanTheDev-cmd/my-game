@@ -50,7 +50,7 @@ func run() -> void:
 	check(session.load_saved() and Rules.memory(session.gathered, "keeper", "vampire") == "honest", "NPC memory and trust survive a real reload")
 	var before_xp: int = session.xp
 	var permanent_flags: Array = session.gathered.duplicate()
-	session.nature = {"kind": "human", "form": "human", "blood": 100.0, "stage": 4, "history": ["vampire"], "cure": 3, "gift": "scar"}
+	session.nature = {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 4, "history": ["vampire"], "cure": 3, "gift": "scar"}
 	session.gathered.append_array(["nature:release_water", "nature:release_garden"])
 	for kind in regions:
 		session.region = regions[kind]

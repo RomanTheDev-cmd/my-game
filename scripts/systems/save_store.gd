@@ -7,7 +7,7 @@ const WorldState = preload("res://scripts/world/living/world_state.gd")
 const Gear = preload("res://scripts/items/equipment_rules.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
-const VERSION := 7
+const VERSION := 8
 const DEFAULT_PATH := "user://save.json"
 
 static func migrate(data: Variant) -> Dictionary:
@@ -53,8 +53,16 @@ static func migrate(data: Variant) -> Dictionary:
 		world["commission"] = WorldState.Commission.defaults()
 	if upgraded.get("version") == 6:
 		if upgraded.has("nature"): return {}
-		upgraded["version"] = VERSION
+		upgraded["version"] = 7
 		upgraded["nature"] = Nature.defaults()
+		upgraded.nature.erase("resolve")
+	if upgraded.get("version") == 7:
+		var old_nature = upgraded.get("nature")
+		if not old_nature is Dictionary or old_nature.has("resolve") or old_nature.get("kind") not in ["human", "vampire"]: return {}
+		if old_nature.get("gift") not in ["", "oath", "blood", "scar"] or old_nature.get("form") not in ["human", "battle"] or old_nature.get("history") not in [[], ["vampire"]]: return {}
+		old_nature["resolve"] = 100.0
+		if not Nature.valid(old_nature): return {}
+		upgraded["version"] = VERSION
 	return upgraded
 
 static func validate(data: Variant) -> bool:

@@ -33,6 +33,8 @@ static func show_dialog(ui: Node, target: String) -> void:
 		action.disabled = not ui.world.can_commission(event)
 	if target == "wright" and state.stage == 6:
 		ui._button("TRIAL_TITLE", ui.show_trial.bind("wright"), content).name = "trial_assignment"
+	if target == "warden" and "pack:invited" in Session.gathered:
+		ui._button("PACK_TITLE", ui.show_pack.bind("warden"), content).name = "pack_warden"
 	if target == "warden":
 		var help: Label = ui._label(content, "WARDEN_TRADE_HELP", 14)
 		help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

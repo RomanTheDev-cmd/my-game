@@ -1,5 +1,6 @@
 extends Node
 const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
+const Pack = preload("res://scripts/nature/pack_rules.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
 const Factions = preload("res://scripts/factions/faction_rules.gd")
@@ -266,6 +267,7 @@ func claim_chest(chest: Dictionary, position: Vector2, current_vitals: Dictionar
 	data.inventory = result.inventory
 	data.gear_owned = result.owned
 	data.opened = result.opened
+	_apply_pack_mastery(data)
 	if Store.write_game(data) != OK:
 		notice.emit("SAVE_FAILED")
 		return false
@@ -418,4 +420,26 @@ func dialogue_event(kind: String, answer: String, position: Vector2, current_vit
 		return false
 	apply(data)
 	notice.emit("DIALOGUE_SAVED")
+	return true
+
+func _apply_pack_mastery(data: Dictionary) -> void:
+	var trained := Pack.mastery(data.nature, data.gathered, data.opened)
+	data.nature = trained.nature
+	data.gathered = trained.gathered
+	data.xp = mini(100000, int(data.xp) + trained.xp)
+
+func pack_event(event: String, position: Vector2, current_vitals: Dictionary) -> bool:
+	var result := Pack.resolve(nature, gathered, opened, float(current_vitals.mana), event)
+	if result.is_empty(): return false
+	var data := snapshot(position, current_vitals)
+	data.nature = result.nature
+	data.gathered = result.gathered
+	data.vitals.mana = result.mana
+	data.world_state.reputation = Factions.change(world_state.reputation, result.trust)
+	data.xp = mini(100000, xp + result.xp)
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("PACK_UPDATED")
 	return true

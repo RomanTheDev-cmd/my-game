@@ -19,12 +19,23 @@ const REGIONS := {
 	"workshop": {
 		"location": "LOCATION_WORKSHOP", "description": "REGION_WORKSHOP", "camp": Vector2(380, 730),
 		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1800, 1160), "exit_label": "TO_LAKE",
-		"extra_exits": [{"point": Vector2(1800, 420), "destination": "waterworks", "arrival": Vector2(240, 650), "label": "TO_WATERWORKS", "direction": 1}],
+		"extra_exits": [{"point": Vector2(1800, 420), "destination": "waterworks", "arrival": Vector2(240, 650), "label": "TO_WATERWORKS", "direction": 1},
+			{"point": Vector2(1780, 1200), "destination": "thicket", "arrival": Vector2(240, 650), "label": "TO_THICKET", "direction": 1}],
 		"warden": Vector2(360, 540), "wright": Vector2(570, 540), "tender": Vector2(520, 870),
 		"herbs": [Vector2(580, 850), Vector2(780, 1080)],
 		"enemies": [["workshop_1", Vector2(1230, 800)], ["workshop_archer", Vector2(1550, 900), "ranged"]],
 		"commission_sites": {"wheel": Vector2(960, 600), "archive": Vector2(1450, 460), "workbench": Vector2(680, 600), "cache": Vector2(1540, 1050)},
 		"salvage": [{"id": "workshop:scrap_1", "point": Vector2(730, 450)}, {"id": "workshop:scrap_2", "point": Vector2(860, 900)}, {"id": "workshop:scrap_3", "point": Vector2(1320, 360)}]
+	},
+	"thicket": {
+		"location": "LOCATION_THICKET", "description": "REGION_THICKET", "camp": Vector2(350, 760), "tracker": Vector2(450, 600),
+		"exit": Vector2(135, 650), "destination": "workshop", "arrival": Vector2(1820, 1190), "exit_label": "TO_WORKSHOP",
+		"herbs": [Vector2(610, 850), Vector2(1250, 1080)],
+		"enemies": [["thicket_1", Vector2(1600, 320)], ["thicket_2", Vector2(1450, 1080)]],
+		"pack_sites": {"trail_0": Vector2(780, 480), "trail_1": Vector2(1080, 600), "trail_2": Vector2(1390, 740), "den": Vector2(1570, 740)},
+		"chests": [{"id": "thicket_cache_0", "point": Vector2(340, 320), "hidden": true, "items": {"coin": 3, "herb": 1}},
+			{"id": "thicket_cache_1", "point": Vector2(1210, 380), "hidden": true, "items": {"coin": 3, "herb": 1}},
+			{"id": "thicket_cache_2", "point": Vector2(1740, 1080), "hidden": true, "items": {"coin": 3, "herb": 1}}]
 	},
 	"waterworks": {
 		"indoor": true, "location": "LOCATION_WATERWORKS", "description": "REGION_WATERWORKS", "camp": Vector2(300, 800),

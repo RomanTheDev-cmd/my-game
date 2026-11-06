@@ -1,6 +1,6 @@
 extends RefCounted
 const Rules = preload("res://scripts/nature/dialogue_rules.gd")
-const NAMES := {"keeper": "KEEPER_NAME", "merchant": "MERCHANT_NAME", "wayfarer": "AID_NAME", "warden": "WARDEN_NAME", "wright": "WRIGHT_NAME", "tender": "TENDER_NAME"}
+const NAMES := {"keeper": "KEEPER_NAME", "merchant": "MERCHANT_NAME", "wayfarer": "AID_NAME", "warden": "WARDEN_NAME", "wright": "WRIGHT_NAME", "tender": "TENDER_NAME", "tracker": "TRACKER_NAME"}
 static func show_page(ui: Node, kind: String, original: String = "") -> void:
 	ui.current_screen = "dialog"
 	ui._page(NAMES.get(kind, "DIALOGUE_TITLE"), 620)
@@ -22,16 +22,19 @@ static func show_page(ui: Node, kind: String, original: String = "") -> void:
 		var text: Label = ui._label(contents, "DIALOGUE_MEMORY_" + remembered.to_upper(), 16)
 		text.name = "dialogue_memory"
 		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	elif current == "wild_returned" and Rules.memory(Session.gathered, kind, "werewolf") != "":
+		var previous: Label = ui._label(contents, "DIALOGUE_PACK_PREVIOUS", 16)
+		previous.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	elif current == "returned" and Rules.memory(Session.gathered, kind, "vampire") != "":
 		var previous: Label = ui._label(contents, "DIALOGUE_PREVIOUS", 16)
 		previous.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	for answer in Rules.ANSWERS.get(current, []):
 		if remembered != "": break
-		var label: String = "DIALOGUE_ANSWER_" + (kind.to_upper() + "_" if answer in ["honest", "explain", "pledge"] else "") + answer.to_upper()
+		var label: String = "DIALOGUE_ANSWER_" + (kind.to_upper() + "_" if answer in ["honest", "explain", "pledge", "pack_word", "remember_pack"] else "") + answer.to_upper()
 		var button: Button = ui._button(label, _answer.bind(ui, kind, answer, original), contents)
 		button.name = "dialogue_" + answer
 		button.disabled = not ui.world.can_dialogue(kind, answer)
-	if current == "form":
+	if current in ["form", "wild_form"]:
 		var return_button: Button = ui._button("NATURE_SHIFT", _return_form.bind(ui, kind, original), contents)
 		return_button.name = "dialogue_return_form"
 	else:
