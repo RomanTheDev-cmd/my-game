@@ -2,6 +2,7 @@ extends Node
 const World = preload("res://scripts/world/world.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const EncounterRules = preload("res://scripts/world/living/encounter_rules.gd")
+const SpellScreen = preload("res://scripts/ui/spell_screen.gd")
 const EquipmentScreen = preload("res://scripts/ui/equipment_screen.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const MapView = preload("res://scripts/ui/world_map.gd")
@@ -14,6 +15,7 @@ var screen: VBoxContainer
 var toast: Label
 var toast_time := 0.0
 var human_label: Label
+var shield_label: Label
 var health_bar: ProgressBar
 var stamina_bar: ProgressBar
 var mana_bar: ProgressBar
@@ -27,6 +29,7 @@ var gold := Color("d8ba7c")
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	get_tree().auto_accept_quit = false
 	_build_theme()
 	Session.fresh()
 	Session.running = false
@@ -108,6 +111,7 @@ func _button(key: String, action: Callable, parent: Node = null) -> Button:
 	var button := Button.new()
 	button.text = tr(key)
 	button.custom_minimum_size = Vector2(280, 44)
+	button.pressed.connect(func(): Sound.play_ui())
 	button.pressed.connect(action)
 	(parent if parent != null else screen).add_child(button)
 	return button
@@ -155,7 +159,7 @@ func show_title() -> void:
 	_button("CONTINUE", load_game).disabled = Store.load_game().is_empty()
 	_button("NEW_GAME", confirm_new)
 	_button("SETTINGS", show_settings)
-	_button("QUIT", func(): get_tree().quit())
+	_button("QUIT", _quit_game)
 	var stage := _label(screen, "EARLY_BUILD", 13)
 	stage.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_focus_first()
@@ -199,7 +203,7 @@ func show_pause() -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	screen.add_child(grid)
-	for entry in [["RESUME", resume], ["MAP", show_map], ["SKILLS", show_skills], ["EQUIPMENT", show_equipment],
+	for entry in [["RESUME", resume], ["MAP", show_map], ["SPELLBOOK", show_spells], ["SKILLS", show_skills], ["EQUIPMENT", show_equipment],
 		["WAIT", show_wait], ["SAVE", world.save_safe], ["LOAD", load_game], ["SETTINGS", show_settings], ["MAIN_MENU", show_title]]:
 		var action := _button(entry[0], entry[1], grid)
 		if entry[0] == "WAIT":
@@ -208,7 +212,7 @@ func show_pause() -> void:
 
 func show_settings() -> void:
 	current_screen = "settings"
-	_page("SETTINGS")
+	_page("SETTINGS", 600)
 	_label(screen, "DIFFICULTY")
 	var choice := OptionButton.new()
 	for key in ["STORY", "ADVENTURE", "CHALLENGE"]:
@@ -225,8 +229,34 @@ func show_settings() -> void:
 		if not Session.set_fullscreen(enabled):
 			fullscreen.set_pressed_no_signal(Session.fullscreen))
 	screen.add_child(fullscreen)
+	for channel in ["master", "effects", "ambience"]:
+		_volume_slider(channel)
 	_button("BACK", show_pause if Session.running else show_title)
 	choice.grab_focus()
+
+func _volume_slider(channel: String) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	screen.add_child(row)
+	var label := _label(row, "VOLUME_" + channel.to_upper(), 16)
+	label.custom_minimum_size.x = 220
+	var slider := HSlider.new()
+	slider.name = "volume_" + channel
+	slider.min_value = 0
+	slider.max_value = 1
+	slider.step = 0.05
+	slider.value = Session.audio[channel]
+	slider.custom_minimum_size = Vector2(230, 30)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.tooltip_text = label.text
+	row.add_child(slider)
+	var amount := _label(row, "", 15)
+	amount.custom_minimum_size.x = 50
+	amount.text = "%d%%" % roundi(slider.value * 100)
+	slider.value_changed.connect(func(value):
+		if not Session.set_volume(channel, value):
+			slider.set_value_no_signal(Session.audio[channel])
+		amount.text = "%d%%" % roundi(slider.value * 100))
 
 func show_journal() -> void:
 	current_screen = "journal"
@@ -326,6 +356,7 @@ func _build_hud() -> void:
 	health_bar = _bar(stats, Color("b3665a"))
 	stamina_bar = _bar(stats, Color("aeab70"))
 	mana_bar = _bar(stats, Color("7ca3b1"))
+	shield_label = _label(stats, "", 12)
 	var space := Control.new()
 	space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	space.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -340,7 +371,7 @@ func _build_hud() -> void:
 	bottom.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom.offset_left = 24
 	bottom.offset_right = -24
-	bottom.offset_top = -122
+	bottom.offset_top = -145
 	bottom.offset_bottom = -12
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(bottom)
@@ -351,8 +382,8 @@ func _build_hud() -> void:
 	quest_label.add_theme_color_override("font_shadow_color", Color("14292a"))
 	quest_label.add_theme_constant_override("shadow_offset_x", 2)
 	quest_label.add_theme_constant_override("shadow_offset_y", 2)
-	_label(bottom, "CONTROLS", 12)
-	_label(bottom, "SAVE_HINT", 12)
+	_label(bottom, "CONTROLS", 12).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_label(bottom, "SAVE_HINT", 12).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _bar(parent: Node, color: Color) -> ProgressBar:
 	var bar := ProgressBar.new()
@@ -377,6 +408,7 @@ func update_hud() -> void:
 	region_label.text = "%s · %s %d · %s" % [tr(world.definition.description), tr("DAY"), floori(minutes / 1440) + 1, Clock.time_text(minutes)]
 	if Session.region != "ruins":
 		region_label.text += " · " + tr("WEATHER_" + weather.to_upper())
+	shield_label.text = tr("AEGIS_STATUS") % [roundi(world.player.shield_strength), world.player.shield_time] if world.player.shield_time > 0 and world.player.shield_strength > 0 else ""
 	health_bar.value = world.player.health
 	stamina_bar.value = world.player.stamina
 	mana_bar.value = world.player.mana
@@ -402,7 +434,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause_game"):
 		if current_screen == "game":
 			show_pause()
-		elif current_screen in ["pause", "dialog", "journal", "settings", "map", "skills", "equipment", "shop", "wait"] and Session.running:
+		elif current_screen in ["pause", "dialog", "journal", "settings", "map", "skills", "equipment", "shop", "wait", "spells"] and Session.running:
+			resume()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("spellbook") and current_screen in ["game", "spells"]:
+		if current_screen == "game":
+			show_spells()
+		else:
 			resume()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("wait") and current_screen == "game":
@@ -556,3 +594,15 @@ func _event_choice(choice: String) -> void:
 		resume()
 	else:
 		show_encounter()
+
+func show_spells() -> void:
+	SpellScreen.show_book(self)
+
+func _quit_game() -> void:
+	get_tree().paused = true
+	await Sound.shutdown()
+	get_tree().quit()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_quit_game()

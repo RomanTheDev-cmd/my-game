@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 var checks := 0
 var failures := 0
 
@@ -74,4 +75,4 @@ func run() -> void:
 	game.world._checkpoint_before_encounter()
 	check(session.checkpoint.position[0] == 900 and session.checkpoint.position[1] == 1000, "approaching encounter creates a safe pre-battle checkpoint")
 	print("Travel checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

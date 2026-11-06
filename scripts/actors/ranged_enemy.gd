@@ -10,6 +10,7 @@ func _ready() -> void:
 	sprite.texture = preload("res://assets/sprites/archer.png")
 
 func _physics_process(delta: float) -> void:
+	_tick_slow(delta)
 	if not is_instance_valid(target) or target.health <= 0:
 		return
 	timer = maxf(0, timer - delta)
@@ -23,6 +24,7 @@ func _physics_process(delta: float) -> void:
 			arrow.position = global_position + attack_direction * 14
 			arrow.direction = attack_direction
 			get_parent().add_child(arrow)
+			Sound.play_at("arrow", global_position)
 			state = "recover"
 			timer = 1.25
 	elif state == "recover":
@@ -49,7 +51,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if offset.x != 0:
 		sprite.flip_h = offset.x < 0
-	modulate = modulate.lerp(Color.WHITE, delta * 8)
+	modulate = modulate.lerp(Color("92c5df") if slow_remaining > 0 else Color.WHITE, delta * 8)
 	queue_redraw()
 
 func _draw() -> void:

@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const Trade = preload("res://scripts/items/trade_rules.gd")
 var checks := 0
@@ -104,4 +105,4 @@ func run() -> void:
 	game.world._poll_encounter()
 	check(not session.world_state.active.is_empty(), "eligible event is placed outside current view")
 	print("Living world integration checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

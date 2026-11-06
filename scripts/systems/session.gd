@@ -17,6 +17,7 @@ signal changed
 var world_state: Dictionary = WorldState.defaults()
 var difficulty := 1
 var fullscreen := false
+var audio: Dictionary = Preferences.DEFAULTS.audio.duplicate()
 const FULL_VITALS := {"health": 100.0, "stamina": 100.0, "mana": 100.0}
 var vitals: Dictionary = FULL_VITALS.duplicate()
 var xp := 0
@@ -41,6 +42,7 @@ func _ready() -> void:
 	var preferences := Preferences.read()
 	difficulty = int(preferences.difficulty)
 	fullscreen = preferences.fullscreen
+	audio = preferences.audio.duplicate()
 	_apply_fullscreen()
 
 func fresh() -> void:
@@ -157,7 +159,7 @@ func consume_item(id: String) -> bool:
 	return true
 
 func set_difficulty(value: int) -> bool:
-	var data := {"version": 1, "difficulty": value, "fullscreen": fullscreen}
+	var data := {"version": 1, "difficulty": value, "fullscreen": fullscreen, "audio": audio.duplicate()}
 	if Preferences.write(data) != OK:
 		notice.emit("PREFERENCES_FAILED")
 		return false
@@ -165,12 +167,24 @@ func set_difficulty(value: int) -> bool:
 	return true
 
 func set_fullscreen(value: bool) -> bool:
-	var data := {"version": 1, "difficulty": difficulty, "fullscreen": value}
+	var data := {"version": 1, "difficulty": difficulty, "fullscreen": value, "audio": audio.duplicate()}
 	if Preferences.write(data) != OK:
 		notice.emit("PREFERENCES_FAILED")
 		return false
 	fullscreen = value
 	_apply_fullscreen()
+	return true
+
+func set_volume(channel: String, value: float) -> bool:
+	if not audio.has(channel):
+		return false
+	var levels := audio.duplicate()
+	levels[channel] = value
+	if Preferences.write({"version": 1, "difficulty": difficulty, "fullscreen": fullscreen, "audio": levels}) != OK:
+		notice.emit("PREFERENCES_FAILED")
+		return false
+	audio = levels
+	Sound.apply_volumes(audio)
 	return true
 
 func _apply_fullscreen() -> void:

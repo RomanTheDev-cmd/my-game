@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const Store = preload("res://scripts/systems/save_store.gd")
 var checks := 0
@@ -32,4 +33,4 @@ func _initialize() -> void:
 	check(upgraded.get("xp") == 80 and upgraded.get("skills") == {}, "migration credits past encounters and quest without spending points")
 	check(upgraded.get("vitals", {}).get("health") == 80, "migration preserves wounded character")
 	print("Progression checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

@@ -2,11 +2,12 @@ config_version=5
 
 [application]
 config/name="Эйрвель"
-config/version="0.5.0"
+config/version="0.6.0"
 run/main_scene="res://scenes/main.tscn"
 
 [autoload]
 Session="*res://scripts/systems/session.gd"
+Sound="*res://scripts/audio/sound.gd"
 
 [display]
 window/size/viewport_width=960

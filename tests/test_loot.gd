@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Loot = preload("res://scripts/items/loot_rules.gd")
 var checks := 0
 var failures := 0
@@ -71,4 +72,4 @@ func run() -> void:
 	await process_frame
 	check(game.world.safe_to_rest(), "cleared encounter becomes safe after projectile disappears")
 	print("Exploration loot checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

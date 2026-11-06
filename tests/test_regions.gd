@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Store = preload("res://scripts/systems/save_store.gd")
 var checks := 0
 var failures := 0
@@ -37,4 +38,4 @@ func _initialize() -> void:
 	for suffix in ["", ".tmp", ".bak"]:
 		DirAccess.remove_absolute(PATH + suffix)
 	print("Region save checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

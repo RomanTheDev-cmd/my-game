@@ -24,6 +24,8 @@ var path := PackedVector2Array()
 var path_index := 0
 var path_timer := 0.0
 var path_target := Vector2.INF
+var slow_remaining := 0.0
+var slow_multiplier := 1.0
 
 func _ready() -> void:
 	health = max_health
@@ -41,6 +43,7 @@ func _ready() -> void:
 	add_child(sprite)
 
 func _physics_process(delta: float) -> void:
+	_tick_slow(delta)
 	if not is_instance_valid(target) or target.health <= 0:
 		return
 	timer = maxf(0, timer - delta)
@@ -71,12 +74,13 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if velocity.x != 0:
 		sprite.flip_h = velocity.x < 0
-	modulate = modulate.lerp(Color.WHITE, delta * 8)
+	modulate = modulate.lerp(Color("92c5df") if slow_remaining > 0 else Color.WHITE, delta * 8)
 	queue_redraw()
 
 func receive_damage(amount: float, direction: Vector2) -> void:
 	if health <= 0:
 		return
+	Sound.play_at("impact", global_position)
 	health -= amount
 	modulate = Color(1.9, 0.7, 0.7)
 	# Movement goes through collision resolution, including knockback.
@@ -95,6 +99,7 @@ func _draw() -> void:
 		draw_rect(Rect2(-14, -35, 28 * maxf(0, health) / max_health, 3), Color("bd7568"))
 
 func _steer(destination: Vector2, speed: float) -> Vector2:
+	speed *= slow_multiplier if slow_remaining > 0 else 1.0
 	if navigation == null:
 		return (destination - global_position).normalized() * speed
 	if path_timer == 0 or path_target.distance_to(destination) > 30:
@@ -107,3 +112,14 @@ func _steer(destination: Vector2, speed: float) -> Vector2:
 	if path_index >= path.size():
 		return Vector2.ZERO
 	return (path[path_index] - global_position).normalized() * speed
+
+func apply_slow(duration: float, multiplier: float) -> void:
+	if health <= 0 or not is_finite(duration) or not is_finite(multiplier) or duration <= 0:
+		return
+	slow_multiplier = minf(slow_multiplier, clampf(multiplier, 0.25, 1)) if slow_remaining > 0 else clampf(multiplier, 0.25, 1)
+	slow_remaining = maxf(slow_remaining, minf(10, duration))
+
+func _tick_slow(delta: float) -> void:
+	slow_remaining = maxf(0, slow_remaining - delta)
+	if slow_remaining == 0:
+		slow_multiplier = 1.0

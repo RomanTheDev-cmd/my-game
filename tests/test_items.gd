@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Items = preload("res://scripts/items/inventory_rules.gd")
 const Magic = preload("res://scripts/magic/magic_rules.gd")
 var checks := 0
@@ -33,4 +34,4 @@ func _initialize() -> void:
 	check(light.get("mana") == 32 and light.get("damage") == 24, "light bolt has consistent cost and damage")
 	check(Magic.cast("unknown", 100, 100, 0).is_empty(), "unknown spell rejected")
 	print("Items and magic rule checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

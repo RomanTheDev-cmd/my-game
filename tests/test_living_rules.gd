@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const Schedule = preload("res://scripts/world/living/npc_schedule.gd")
 const State = preload("res://scripts/world/living/world_state.gd")
@@ -58,4 +59,4 @@ func _initialize() -> void:
 	bad.seen = ["shelter"]
 	check(not State.valid(bad), "resolved event cannot remain active")
 	print("Living world rule checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

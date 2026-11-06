@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Store = preload("res://scripts/systems/save_store.gd")
 var checks := 0
 var failures := 0
@@ -42,4 +43,4 @@ func run() -> void:
 	check(active.id == "shelter" and active.region == "crossing" and Vector2(active.position[0], active.position[1]) == Vector2(650, 600) and loaded.world_state.seen.is_empty(), "pending encounter retains identity, location and unresolved status after reload")
 	DirAccess.remove_absolute("user://world-time-test.json")
 	print("World time checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

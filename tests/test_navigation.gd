@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 var failures := 0
 var checks := 0
 var arena: Node2D
@@ -54,4 +55,4 @@ func run() -> void:
 	check(enemy.position.distance_to(player.position) < 50, "enemy reaches player after detour")
 	check(player.health < 100, "enemy resumes real attacks after navigating")
 	print("Navigation checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

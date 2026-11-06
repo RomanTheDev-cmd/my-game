@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 var checks := 0
 var failures := 0
 
@@ -83,4 +84,4 @@ func run() -> void:
 	heavy._physics_process(0.02)
 	check(player.health == 68 and heavy.state == "recover", "heavy sweep has distinct reach and damage with recovery")
 	print("Enemy archetype checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

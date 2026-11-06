@@ -1,11 +1,14 @@
 extends Node2D
 var direction := Vector2.RIGHT
+var kind := "light"
 var damage := 24.0
 var speed := 360.0
 var remaining := 1.4
 
 func _ready() -> void:
 	add_to_group("spell_projectiles")
+	if kind == "frost":
+		speed = 300
 	z_index = 3
 	queue_redraw()
 
@@ -21,6 +24,8 @@ func _physics_process(delta: float) -> void:
 	if not hit.is_empty():
 		if hit.collider.has_method("receive_damage"):
 			hit.collider.receive_damage(damage, direction)
+			if kind == "frost" and hit.collider.has_method("apply_slow"):
+				hit.collider.apply_slow(4.0, 0.55)
 		queue_free()
 		set_physics_process(false)
 		return
@@ -28,5 +33,5 @@ func _physics_process(delta: float) -> void:
 
 func _draw() -> void:
 	var center := Vector2(0, -8)
-	draw_line(center - direction * 12, center, Color("cead6d"), 4)
-	draw_rect(Rect2(center - Vector2(3, 3), Vector2(6, 6)), Color("fff0b9"))
+	draw_line(center - direction * 12, center, Color("96c4da") if kind == "frost" else Color("cead6d"), 4)
+	draw_rect(Rect2(center - Vector2(3, 3), Vector2(6, 6)), Color("d4f1fa") if kind == "frost" else Color("fff0b9"))

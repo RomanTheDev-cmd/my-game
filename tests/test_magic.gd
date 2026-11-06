@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 var failures := 0
 var checks := 0
 
@@ -70,4 +71,4 @@ func run() -> void:
 	check(player.drink_potion() and player.health == 80 and session.inventory.potion == 0, "potion heals actual character and is consumed once")
 	check(not player.drink_potion() and player.health == 80, "empty inventory cannot heal again")
 	print("Magic checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Quests = preload("res://scripts/quests/quest_book.gd")
 var checks := 0
 var failures := 0
@@ -46,4 +47,4 @@ func _initialize() -> void:
 		check(outcome.get("stage") == 2, "each authored alternative can complete independently")
 		check(Quests.aid_transition(2, outcome.inventory, outcome.mana, event).is_empty(), "each completed alternative is terminal")
 	print("Quest checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

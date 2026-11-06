@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 var failures := 0
 var checks := 0
 
@@ -54,4 +55,4 @@ func run() -> void:
 	check(not game.world.aid_choice("herbs") and session.aid_quest == 1, "missing herbs do not consume a partial cost")
 	check(not game.world.aid_choice("coins") and session.aid_quest == 1, "missing coins do not complete quest")
 	print("Alternative quest checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

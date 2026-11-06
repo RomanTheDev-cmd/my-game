@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Rules = preload("res://scripts/combat/combat_rules.gd")
 var failures := 0
 var checks := 0
@@ -17,4 +18,4 @@ func _initialize() -> void:
 	check(Rules.damage(20, 2, false, false) == 27, "challenge increases damage")
 	check(Rules.damage(-20, 1, false, false) == 0, "negative damage cannot heal")
 	print("Checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

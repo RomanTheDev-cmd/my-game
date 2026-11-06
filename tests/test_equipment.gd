@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 const Gear = preload("res://scripts/items/equipment_rules.gd")
 const Trade = preload("res://scripts/items/trade_rules.gd")
 var checks := 0
@@ -38,4 +39,4 @@ func _initialize() -> void:
 	var sold := Trade.sell("potion", potion.get("inventory", {}), owned, worn)
 	check(sold.get("inventory", {}).get("coin") == 17, "buying and reselling cannot generate currency")
 	print("Equipment and trade checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

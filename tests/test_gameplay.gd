@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 var checks := 0
 var failures := 0
 var game: Node
@@ -172,4 +173,4 @@ func run() -> void:
 			break
 	check(game.current_screen == "title", "settings opened from title return to title")
 	print("Gameplay checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)

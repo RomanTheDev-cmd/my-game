@@ -240,11 +240,12 @@ func _draw() -> void:
 func player_vitals() -> Dictionary:
 	return {"health": player.health, "stamina": player.stamina, "mana": player.mana}
 
-func _on_cast_spell(origin: Vector2, direction: Vector2, amount: float) -> void:
+func _on_cast_spell(origin: Vector2, direction: Vector2, amount: float, kind: String = "light") -> void:
 	var bolt := Bolt.new()
 	bolt.position = origin
 	bolt.direction = direction
 	bolt.damage = amount
+	bolt.kind = kind
 	add_child(bolt)
 
 func _checkpoint_before_encounter() -> void:

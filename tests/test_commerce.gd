@@ -1,4 +1,5 @@
 extends SceneTree
+const TestExit = preload("res://tests/support/test_exit.gd")
 var failures := 0
 var checks := 0
 
@@ -90,4 +91,4 @@ func run() -> void:
 		sell.pressed.emit()
 	check(session.inventory.get("herb") == 0 and session.inventory.coin == 31, "sell-mode button executes and persists the actual sale")
 	print("Commerce integration checks: %d; failures: %d" % [checks, failures])
-	quit(1 if failures else 0)
+	await TestExit.finish(self, 1 if failures else 0)
