@@ -37,7 +37,7 @@ func run() -> void:
 	game.world.interact()
 	check(session.opened.is_empty(), "guarded reward remains locked in real world")
 	for child in game.world.get_children():
-		if child is CharacterBody2D and child != game.world.player:
+		if child is CharacterBody2D and child != game.world.player and child.has_method("receive_damage"):
 			child.receive_damage(999, Vector2.RIGHT)
 	await process_frame
 	check(session.xp == 105 and session.inventory.get("coin") == 17, "different enemies award their own experience and currency once")

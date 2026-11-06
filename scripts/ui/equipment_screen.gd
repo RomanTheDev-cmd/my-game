@@ -77,14 +77,14 @@ static func shop(ui: Node, selling: bool = false) -> void:
 		details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(details)
 		var label: Label = ui._label(details, "", 16)
-		label.text = "%s · %d" % [ui.tr(id.to_upper()), definition.sell if selling else definition.price]
+		label.text = "%s · %d" % [ui.tr(id.to_upper()), Trade.quote(id, selling, int(Session.world_state.reputation.roadfolk))]
 		var description: Label = ui._label(details, id.to_upper() + "_DESC", 12)
 		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		description.custom_minimum_size.x = 380
 		var button: Button = ui._button("SELL" if selling else "BUY", _trade.bind(ui, id, selling), row)
 		button.name = "trade_" + id
 		button.custom_minimum_size.x = 130
-		var result := Trade.sell(id, Session.inventory, Session.gear_owned, Session.equipped) if selling else Trade.buy(id, Session.inventory, Session.gear_owned)
+		var result := Trade.sell(id, Session.inventory, Session.gear_owned, Session.equipped, int(Session.world_state.reputation.roadfolk)) if selling else Trade.buy(id, Session.inventory, Session.gear_owned, int(Session.world_state.reputation.roadfolk))
 		button.disabled = result.is_empty()
 	ui._button("BACK", ui.resume)
 	(sell_tab if selling else buy_tab).grab_focus()

@@ -4,6 +4,7 @@ var region := "crossing"
 var player_position := Vector2.ZERO
 var facing := Vector2.RIGHT
 var obstacles: Array[Dictionary] = []
+var npcs: Dictionary = {}
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(680, 280)
@@ -46,12 +47,12 @@ func _draw() -> void:
 		var exit_point := project(portal.point)
 		draw_rect(Rect2(exit_point - Vector2(3, 6), Vector2(6, 12)), Color("c6d9cd"))
 	if definition.has("merchant"):
-		draw_circle(project(definition.merchant), 3, Color("d9b88a"))
+		draw_circle(project(npcs.get("merchant", definition.merchant)), 3, Color("d9b88a"))
 	if definition.has("keeper"):
-		var keeper := project(definition.keeper)
+		var keeper := project(npcs.get("keeper", definition.keeper))
 		draw_circle(keeper, 3, Color("e9e1ce"))
 	if definition.has("wayfarer"):
-		draw_circle(project(definition.wayfarer), 3, Color("e9e1ce"))
+		draw_circle(project(npcs.get("wayfarer", definition.wayfarer)), 3, Color("e9e1ce"))
 	var player := project(player_position)
 	var direction := facing.normalized()
 	var side := direction.orthogonal()

@@ -1,4 +1,10 @@
 extends Node2D
+const Schedule = preload("res://scripts/world/living/npc_schedule.gd")
+const Clock = preload("res://scripts/world/living/world_clock.gd")
+const Encounters = preload("res://scripts/world/living/encounter_rules.gd")
+const ScheduledNpc = preload("res://scripts/actors/scheduled_npc.gd")
+const WorldAmbience = preload("res://scripts/world/living/world_environment.gd")
+const EncounterMarker = preload("res://scripts/world/living/encounter_marker.gd")
 const Gear = preload("res://scripts/items/equipment_rules.gd")
 const Bolt = preload("res://scripts/magic/spell_bolt.gd")
 const Player = preload("res://scripts/actors/player.gd")
@@ -11,10 +17,10 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
-var merchant: Sprite2D
+var merchant: CharacterBody2D
 var player: CharacterBody2D
-var wayfarer: Sprite2D
-var keeper: Sprite2D
+var wayfarer: CharacterBody2D
+var keeper: CharacterBody2D
 var lantern: Sprite2D
 var herbs: Array[Sprite2D] = []
 var chests: Array[Sprite2D] = []
@@ -22,6 +28,8 @@ var time := 0.0
 var definition: Dictionary = {}
 var navigation: RefCounted
 var encounter_timer := 0.0
+var event_timer := 1.0
+var event_marker: Node2D
 var encounter_checkpoints: Dictionary = {}
 
 func _ready() -> void:
@@ -33,22 +41,13 @@ func _ready() -> void:
 	add_child(land)
 	navigation = Navigator.new()
 	navigation.configure(self)
-	merchant = Sprite2D.new()
-	merchant.texture = preload("res://assets/sprites/wayfarer.png")
+	merchant = _spawn_npc("merchant")
 	merchant.modulate = Color("c2ad9b")
-	merchant.position = definition.get("merchant", Vector2.ZERO)
-	merchant.visible = definition.has("merchant")
-	add_child(merchant)
-	keeper = Sprite2D.new()
-	keeper.texture = preload("res://assets/sprites/keeper.png")
-	keeper.position = definition.get("keeper", Vector2.ZERO)
-	keeper.visible = definition.has("keeper")
-	add_child(keeper)
-	wayfarer = Sprite2D.new()
-	wayfarer.texture = preload("res://assets/sprites/wayfarer.png")
-	wayfarer.position = definition.get("wayfarer", Vector2.ZERO)
-	wayfarer.visible = definition.has("wayfarer")
-	add_child(wayfarer)
+	keeper = _spawn_npc("keeper")
+	wayfarer = _spawn_npc("wayfarer")
+	event_marker = EncounterMarker.new()
+	event_marker.hide()
+	add_child(event_marker)
 	lantern = Sprite2D.new()
 	lantern.texture = preload("res://assets/sprites/lantern.png")
 	lantern.position = Vector2(1240, 420)
@@ -91,8 +90,25 @@ func _ready() -> void:
 		enemy.defeated.connect(_on_defeated)
 		add_child(enemy)
 
+	var environment := WorldAmbience.new()
+	environment.region = Session.region
+	environment.player = player
+	add_child(environment)
+	_update_npcs()
+	_update_event_marker()
+	_sync_context()
+
 func _process(delta: float) -> void:
 	time += delta
+	if Session.running and player.health > 0:
+		Session.advance_world(delta)
+	_update_npcs()
+	_sync_context()
+	event_timer -= delta
+	if event_timer <= 0:
+		event_timer = 1
+		_poll_encounter()
+	_update_event_marker()
 	encounter_timer -= delta
 	if encounter_timer <= 0:
 		encounter_timer = 0.1
@@ -115,6 +131,7 @@ func safe_to_rest() -> bool:
 	return true
 
 func save_safe() -> void:
+	_sync_context()
 	if safe_to_rest():
 		Session.save_at(player.position, player_vitals())
 	else:
@@ -122,7 +139,7 @@ func save_safe() -> void:
 
 func nearby_key() -> String:
 	if merchant.visible and player.position.distance_to(merchant.position) < 45:
-		return "MERCHANT_NAME"
+		return "MERCHANT_NAME" if Schedule.shop_open(Session.world_state.minutes) else "MERCHANT_CLOSED"
 	if keeper.visible and player.position.distance_to(keeper.position) < 50:
 		return "KEEPER_NAME"
 	if wayfarer.visible and player.position.distance_to(wayfarer.position) < 45:
@@ -131,6 +148,8 @@ func nearby_key() -> String:
 		return "REST"
 	if lantern.visible and player.position.distance_to(lantern.position) < 40:
 		return "LANTERN"
+	if event_marker.visible and player.position.distance_to(event_marker.position) < 45:
+		return "ENCOUNTER"
 	for herb in herbs:
 		if herb.visible and player.position.distance_to(herb.position) < 30:
 			return "HERB"
@@ -143,6 +162,7 @@ func nearby_key() -> String:
 	return ""
 
 func interact() -> void:
+	_sync_context()
 	var key := nearby_key()
 	if key.begins_with("TO_"):
 		for portal in Regions.exits(Session.region):
@@ -150,13 +170,14 @@ func interact() -> void:
 				travel_requested.emit(portal.destination, portal.arrival)
 				return
 	match key:
+		"ENCOUNTER": dialog_requested.emit("encounter")
+		"MERCHANT_CLOSED": dialog_requested.emit("merchant_closed")
 		"MERCHANT_NAME": dialog_requested.emit("merchant")
 		"KEEPER_NAME": dialog_requested.emit("keeper")
 		"AID_NAME": dialog_requested.emit("wayfarer")
 		"REST":
 			if safe_to_rest():
-				player.restore()
-				Session.save_at(player.position, player_vitals())
+				wait(30)
 			else:
 				Session.notice.emit("CHECKPOINT_UNSAFE")
 		"LANTERN":
@@ -246,6 +267,69 @@ func aid_choice(event: String) -> bool:
 	return true
 
 func trade(id: String, selling: bool) -> bool:
+	_sync_context()
 	if nearby_key() != "MERCHANT_NAME" or not safe_to_rest():
 		return false
 	return Session.trade_item(id, selling, player.position, player_vitals())
+
+func _spawn_npc(kind: String) -> CharacterBody2D:
+	var npc := ScheduledNpc.new()
+	npc.kind = kind
+	npc.navigation = navigation
+	var destination := Schedule.destination(Session.region, kind, Session.world_state.minutes, Session.aid_quest)
+	var saved: Array = Session.world_state.npcs.get(Session.region + ":" + kind, [destination.x, destination.y])
+	npc.position = Vector2(saved[0], saved[1])
+	npc.destination = destination
+	npc.visible = definition.has(kind)
+	add_child(npc)
+	return npc
+
+func _update_npcs() -> void:
+	for npc in [merchant, keeper, wayfarer]:
+		if is_instance_valid(npc) and npc.visible:
+			npc.set_destination(Schedule.destination(Session.region, npc.kind, Session.world_state.minutes, Session.aid_quest))
+
+func _sync_context() -> void:
+	for npc in [merchant, keeper, wayfarer]:
+		if is_instance_valid(npc) and npc.visible:
+			Session.world_state.npcs[Session.region + ":" + npc.kind] = [npc.position.x, npc.position.y]
+
+func can_wait() -> bool:
+	return player.health > 0 and player.position.distance_to(definition.camp) < 45 and safe_to_rest()
+
+func wait(minutes: float) -> bool:
+	if not can_wait():
+		Session.notice.emit("WAIT_UNAVAILABLE")
+		return false
+	_sync_context()
+	if not Session.wait_minutes(minutes, player.position):
+		return false
+	player.restore()
+	_update_npcs()
+	return true
+
+func _poll_encounter() -> void:
+	if not definition.has("event_point") or not safe_to_rest() or not Session.world_state.active.is_empty():
+		return
+	if Session.world_state.minutes < Session.world_state.next_event or player.position.distance_to(definition.event_point) < 330:
+		return
+	var id := Encounters.choose(Session.region, Session.world_state.minutes, int(Session.world_state.seed), Session.world_state.seen, int(Session.world_state.reputation.roadfolk))
+	if id != "":
+		Session.world_state.active = {"id": id, "region": Session.region, "position": [definition.event_point.x, definition.event_point.y]}
+
+func _update_event_marker() -> void:
+	var event: Dictionary = Session.world_state.active
+	event_marker.visible = not event.is_empty() and event.region == Session.region
+	if event_marker.visible:
+		event_marker.position = Vector2(event.position[0], event.position[1])
+		event_marker.event_id = event.id
+
+func resolve_encounter(choice: String) -> bool:
+	if nearby_key() != "ENCOUNTER" or not safe_to_rest():
+		return false
+	_sync_context()
+	if not Session.resolve_encounter(choice, player.position, player_vitals()):
+		return false
+	player.mana = Session.vitals.mana
+	_update_event_marker()
+	return true

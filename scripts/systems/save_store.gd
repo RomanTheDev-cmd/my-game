@@ -1,9 +1,10 @@
 extends RefCounted
 
+const WorldState = preload("res://scripts/world/living/world_state.gd")
 const Gear = preload("res://scripts/items/equipment_rules.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
-const VERSION := 4
+const VERSION := 5
 const DEFAULT_PATH := "user://save.json"
 
 static func migrate(data: Variant) -> Dictionary:
@@ -27,15 +28,20 @@ static func migrate(data: Variant) -> Dictionary:
 		var coins = upgraded.inventory.get("coin", 0)
 		if not (coins is int or coins is float) or coins < 0 or coins > 999 or floorf(coins) != coins:
 			return {}
-		upgraded["version"] = VERSION
+		upgraded["version"] = 4
 		upgraded["gear_owned"] = Gear.DEFAULT_OWNED.duplicate()
 		upgraded["equipped"] = Gear.DEFAULT_EQUIPPED.duplicate()
 		upgraded["opened"] = []
 		upgraded.inventory["coin"] = mini(999, int(coins) + upgraded.defeated.size() * 3)
+	if upgraded.get("version") == 4:
+		upgraded["version"] = VERSION
+		upgraded["world_state"] = WorldState.defaults()
 	return upgraded
 
 static func validate(data: Variant) -> bool:
 	if not data is Dictionary or data.get("version") != VERSION:
+		return false
+	if not WorldState.valid(data.get("world_state")):
 		return false
 	if not Gear.valid(data.get("gear_owned"), data.get("equipped")) or not data.get("opened") is Array:
 		return false

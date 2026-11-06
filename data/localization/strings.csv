@@ -18,7 +18,7 @@ SAVE,Сохранить
 LOAD,Загрузить
 JOURNAL,Дорожный дневник
 LOCATION,Ивовая переправа
-REGION,Пограничье · ранний вечер
+REGION,Пограничье
 HUMAN,Человек
 HP,Здоровье
 STAMINA,Выносливость
@@ -59,7 +59,7 @@ HEAL,Q / Y · Исцеление
 ATTACK,ЛКМ / X · Удар
 DODGE,Пробел / A · Перекат
 JOURNAL_HINT,Tab / Back — закрыть дневник
-SAVE_HINT,F — заряд · H — настой · M — карта · C — навыки · I — снаряжение · F5/F9 — запись/загрузка
+SAVE_HINT,F — заряд · H — настой · M — карта · C — навыки · I — вещи · T — ожидание · F5/F9 — запись
 CHECKPOINT_UNSAFE,Сначала отойдите от противников.
 NO_HEAL_NEEDED,Раны уже затянулись.
 RESTART_WARNING,Начать заново? Предыдущее сохранение будет заменено только после нового сохранения.
@@ -67,7 +67,7 @@ CONFIRM_NEW,Начать заново
 CANCEL,Отмена
 MAIN_MENU,Главное меню
 LOCATION_LAKE,Озерная терраса
-REGION_LAKE,Тихий берег · вечер
+REGION_LAKE,Тихий берег
 TO_LAKE,К озерной террасе
 TO_CROSSING,К Ивовой переправе
 TRAVEL_SAVED,Переход сохранён.
@@ -147,3 +147,35 @@ ARMOR_PROTECTION,Доспех
 BLOCK_PROTECTION,Блок
 SELL_EQUIPPED_HINT,Надетые вещи сначала снимите в снаряжении (I).
 TRADE_DONE,Сделка сохранена.
+DAY,День
+WEATHER_CLEAR,Ясно
+WEATHER_RAIN,Дождь
+WEATHER_FOG,Туман
+WAIT,Ожидание у огня
+WAIT_HOUR,Отдохнуть час
+WAIT_MORNING,Дождаться утра
+WAIT_HELP,Вы переждёте у огня и восстановите силы.
+WAIT_UNAVAILABLE,Ожидать можно у безопасного привала.
+RESTED,Вы отдохнули. Путь сохранён.
+MERCHANT_CLOSED,Лавка закрыта
+SHOP_HOURS,Торговец принимает с 07:00 до 21:00. Можно вернуться утром.
+ENCOUNTER,Необычная встреча
+ENCOUNTER_UNAVAILABLE,Этот способ сейчас недоступен.
+ENCOUNTER_SAVED,Решение сохранено.
+ROADFOLK_TRUST,Доверие путников
+EVENT_TITLE_SHELTER,Под навесом
+EVENT_TEXT_SHELTER,"Путник пережидает дождь, кутаясь в мокрый плащ. Немного трав или тёплый свет помогли бы ему согреться."
+EVENT_TITLE_LOST_PACK,Забытая сумка
+EVENT_TEXT_LOST_PACK,У дороги оставлена небольшая сумка. На ремне — знак переправы. Владельца можно разыскать среди путников.
+EVENT_TITLE_FIREFLIES,Огоньки над водой
+EVENT_TEXT_FIREFLIES,Над камышами медленно поднимаются огоньки. Здесь тихо. Можно ненадолго забыть о дороге.
+EVENT_TITLE_CAMP_SONG,Дорожная песня
+EVENT_TEXT_CAMP_SONG,"У небольшого огня звучит знакомая мелодия. Певец кивает вам, не прерывая песни."
+EVENT_CHOICE_HERB,Поделиться травой · 1 трава
+EVENT_CHOICE_MAGIC,Согреть светом · 25 сосредоточения
+EVENT_CHOICE_LEAVE,Продолжить путь
+EVENT_CHOICE_RETURN,Разыскать владельца
+EVENT_CHOICE_KEEP,Оставить находку себе
+EVENT_CHOICE_OBSERVE,Побыть у воды
+EVENT_CHOICE_LISTEN,Послушать
+EVENT_CHOICE_SHARE,Оставить монету · 1 монета

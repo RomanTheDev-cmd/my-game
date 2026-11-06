@@ -84,5 +84,30 @@ func capture() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/pause.png")
+	game.resume()
+	session_for_skills.region = "crossing"
+	session_for_skills.arrival = Vector2(430, 490)
+	session_for_skills.world_state.minutes = 1380
+	game._build_world()
+	game.resume()
+	for i in 12:
+		await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/night.png")
+	session_for_skills.world_state.minutes = 1440
+	for i in 12:
+		await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/rain.png")
+	session_for_skills.world_state.minutes = 1860
+	for i in 12:
+		await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/fog.png")
+	game.world.player.position = game.world.definition.camp
+	game.show_wait()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/wait.png")
 	print("CAPTURE_OK")
 	quit()

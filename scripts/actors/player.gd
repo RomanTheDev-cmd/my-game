@@ -103,6 +103,10 @@ func receive_damage(amount: float) -> void:
 		died.emit()
 
 func restore() -> void:
+	magic_cooldown = 0
+	attack_cooldown = 0
+	hurt_time = 0
+	dodge_time = 0
 	health = 100
 	stamina = 100
 	mana = 100

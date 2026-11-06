@@ -1,5 +1,7 @@
 extends Node
 const World = preload("res://scripts/world/world.gd")
+const Clock = preload("res://scripts/world/living/world_clock.gd")
+const EncounterRules = preload("res://scripts/world/living/encounter_rules.gd")
 const EquipmentScreen = preload("res://scripts/ui/equipment_screen.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const MapView = preload("res://scripts/ui/world_map.gd")
@@ -198,8 +200,10 @@ func show_pause() -> void:
 	grid.add_theme_constant_override("v_separation", 10)
 	screen.add_child(grid)
 	for entry in [["RESUME", resume], ["MAP", show_map], ["SKILLS", show_skills], ["EQUIPMENT", show_equipment],
-		["SAVE", world.save_safe], ["LOAD", load_game], ["SETTINGS", show_settings], ["MAIN_MENU", show_title]]:
-		_button(entry[0], entry[1], grid)
+		["WAIT", show_wait], ["SAVE", world.save_safe], ["LOAD", load_game], ["SETTINGS", show_settings], ["MAIN_MENU", show_title]]:
+		var action := _button(entry[0], entry[1], grid)
+		if entry[0] == "WAIT":
+			action.disabled = not world.can_wait()
 	_focus_first()
 
 func show_settings() -> void:
@@ -240,6 +244,7 @@ func show_journal() -> void:
 	if Session.aid_quest > 0:
 		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_label(contents, "").text = "%s: %d" % [tr("ROADFOLK_TRUST"), int(Session.world_state.reputation.roadfolk)]
 	_label(contents, "INVENTORY", 23).add_theme_color_override("font_color", gold)
 	var entries := 0
 	for item in Session.inventory:
@@ -259,6 +264,16 @@ func show_journal() -> void:
 	_focus_first()
 
 func show_dialog(kind: String = "keeper") -> void:
+	if kind == "merchant_closed":
+		current_screen = "dialog"
+		_page("MERCHANT_CLOSED", 580)
+		_label(screen, "SHOP_HOURS", 17)
+		_button("BACK", resume)
+		_focus_first()
+		return
+	if kind == "encounter":
+		show_encounter()
+		return
 	if kind == "merchant":
 		EquipmentScreen.shop(self)
 		return
@@ -357,7 +372,11 @@ func update_hud() -> void:
 		return
 	human_label.text = "%s · %s %d" % [tr("HUMAN"), tr("LEVEL"), Skills.level(Session.xp)]
 	location_label.text = tr(world.definition.location)
-	region_label.text = tr(world.definition.description)
+	var minutes: float = Session.world_state.minutes
+	var weather := Clock.weather(minutes, int(Session.world_state.seed))
+	region_label.text = "%s · %s %d · %s" % [tr(world.definition.description), tr("DAY"), floori(minutes / 1440) + 1, Clock.time_text(minutes)]
+	if Session.region != "ruins":
+		region_label.text += " · " + tr("WEATHER_" + weather.to_upper())
 	health_bar.value = world.player.health
 	stamina_bar.value = world.player.stamina
 	mana_bar.value = world.player.mana
@@ -383,8 +402,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause_game"):
 		if current_screen == "game":
 			show_pause()
-		elif current_screen in ["pause", "dialog", "journal", "settings", "map", "skills", "equipment", "shop"] and Session.running:
+		elif current_screen in ["pause", "dialog", "journal", "settings", "map", "skills", "equipment", "shop", "wait"] and Session.running:
 			resume()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("wait") and current_screen == "game":
+		show_wait()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("equipment") and current_screen in ["game", "equipment"]:
 		if current_screen == "game":
@@ -438,6 +460,9 @@ func show_map() -> void:
 	map.player_position = world.player.position
 	map.facing = world.player.facing
 	map.obstacles = world.navigation.obstacles
+	for npc in [world.merchant, world.keeper, world.wayfarer]:
+		if npc.visible:
+			map.npcs[npc.kind] = npc.position
 	screen.add_child(map)
 	var legend := _label(screen, "MAP_LEGEND", 13)
 	legend.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -494,3 +519,40 @@ func _position_toast(in_overlay: bool) -> void:
 
 func show_equipment() -> void:
 	EquipmentScreen.equipment(self)
+
+func show_wait() -> void:
+	if not world.can_wait():
+		show_notice("WAIT_UNAVAILABLE")
+		return
+	current_screen = "wait"
+	_page("WAIT", 580)
+	_label(screen, "WAIT_HELP", 16)
+	_button("WAIT_HOUR", _wait_for.bind(60.0))
+	_button("WAIT_MORNING", _wait_for.bind(Clock.until_morning(Session.world_state.minutes)))
+	_button("BACK", resume)
+	_focus_first()
+
+func _wait_for(minutes: float) -> void:
+	if world.wait(minutes):
+		resume()
+
+func show_encounter() -> void:
+	if Session.world_state.active.is_empty():
+		resume()
+		return
+	var id: String = Session.world_state.active.id
+	current_screen = "dialog"
+	_page("EVENT_TITLE_" + id.to_upper(), 620)
+	var text := _label(screen, "EVENT_TEXT_" + id.to_upper(), 18)
+	text.custom_minimum_size.x = 620
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	for choice in EncounterRules.ENTRIES[id].choices:
+		var button := _button("EVENT_CHOICE_" + str(choice).to_upper(), _event_choice.bind(choice))
+		button.disabled = EncounterRules.resolve(id, choice, Session.inventory, world.player.mana, int(Session.world_state.reputation.roadfolk)).is_empty()
+	_focus_first()
+
+func _event_choice(choice: String) -> void:
+	if world.resolve_encounter(choice):
+		resume()
+	else:
+		show_encounter()

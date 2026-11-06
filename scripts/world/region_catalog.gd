@@ -3,7 +3,7 @@ extends RefCounted
 const REGIONS := {
 	"crossing": {
 		"location": "LOCATION", "description": "REGION", "camp": Vector2(440, 470),
-		"merchant": Vector2(235, 500), "keeper": Vector2(520, 490), "exit": Vector2(1800, 500), "destination": "lake",
+		"event_point": Vector2(650, 600), "merchant": Vector2(235, 500), "keeper": Vector2(520, 490), "exit": Vector2(1800, 500), "destination": "lake",
 		"arrival": Vector2(230, 650), "exit_label": "TO_LAKE",
 		"herbs": [Vector2(650, 670), Vector2(930, 680), Vector2(1200, 700)],
 		"enemies": [["road_1", Vector2(970, 550)], ["road_2", Vector2(1240, 530)], ["road_3", Vector2(1430, 640)]]
@@ -11,7 +11,7 @@ const REGIONS := {
 	"lake": {
 		"location": "LOCATION_LAKE", "description": "REGION_LAKE", "camp": Vector2(360, 610),
 		"extra_exits": [{"point": Vector2(1800, 650), "destination": "ruins", "arrival": Vector2(260, 650), "label": "TO_RUINS", "direction": 1}],
-		"wayfarer": Vector2(480, 620), "exit": Vector2(135, 650), "destination": "crossing", "arrival": Vector2(1730, 500), "exit_label": "TO_CROSSING",
+		"event_point": Vector2(690, 700), "wayfarer": Vector2(480, 620), "exit": Vector2(135, 650), "destination": "crossing", "arrival": Vector2(1730, 500), "exit_label": "TO_CROSSING",
 		"herbs": [Vector2(600, 650), Vector2(1100, 880), Vector2(1500, 750)],
 		"enemies": [["lake_1", Vector2(1210, 840)], ["lake_2", Vector2(1510, 860), "ranged"]]
 	},

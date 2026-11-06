@@ -1,4 +1,5 @@
 extends Node2D
+const Schedule = preload("res://scripts/world/living/npc_schedule.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
 const TREE = preload("res://assets/sprites/tree.png")
 var trees: Array[Vector2] = []
@@ -181,7 +182,10 @@ func _draw_lake() -> void:
 
 func _reserved(point: Vector2) -> bool:
 	var definition := Regions.get_region(region)
-	for key in ["keeper", "wayfarer", "merchant", "camp", "exit"]:
+	for location in Schedule.reserved(region):
+		if point.distance_to(location) < 50:
+			return true
+	for key in ["keeper", "wayfarer", "merchant", "camp", "exit", "event_point"]:
 		if definition.has(key) and point.distance_to(definition[key]) < 50:
 			return true
 	for entry in definition.enemies:
