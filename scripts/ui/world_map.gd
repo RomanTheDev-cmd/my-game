@@ -33,6 +33,10 @@ func _draw() -> void:
 		_box(Rect2(570, 100, 820, 330), Color("507c88"))
 		_box(Rect2(670, 390, 620, 115), Color("507c88"))
 		draw_line(project(Vector2(0, 650)), project(Vector2(1920, 650)), Color("aa9f7e"), 7)
+	if region == "workshop":
+		_box(Rect2(1090, 130, 90, 1060), Color("507c88"))
+		for y in [340, 620, 990]:
+			_box(Rect2(1080, y - 25, 110, 50), Color("c0b598"))
 	if region == "ruins":
 		draw_rect(area, Color("4b5356"))
 	for obstacle in obstacles:
@@ -53,6 +57,9 @@ func _draw() -> void:
 		draw_circle(keeper, 3, Color("e9e1ce"))
 	if definition.has("wayfarer"):
 		draw_circle(project(npcs.get("wayfarer", definition.wayfarer)), 3, Color("e9e1ce"))
+	for kind in ["warden", "wright", "tender"]:
+		if npcs.has(kind):
+			draw_circle(project(npcs[kind]), 3, Color("d5d7af"))
 	var player := project(player_position)
 	var direction := facing.normalized()
 	var side := direction.orthogonal()

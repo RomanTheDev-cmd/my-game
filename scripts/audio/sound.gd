@@ -13,6 +13,7 @@ var ambience: Dictionary = {}
 var ambience_levels := {"wind": 0.0, "rain": 0.0, "room": 0.0}
 var step_index := 0
 var shutting_down := false
+var loop_resources: Array[WeakRef] = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -70,6 +71,7 @@ func loop_sample(id: String) -> AudioStreamWAV:
 	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	stream.loop_begin = 0
 	stream.loop_end = roundi(stream.get_length() * stream.mix_rate)
+	loop_resources.append(weakref(stream))
 	return stream
 
 func play_at(id: String, point: Vector2) -> bool:
@@ -137,7 +139,7 @@ func _process(delta: float) -> void:
 		voice.volume_db = linear_to_db(maxf(0.0001, ambience_levels[id])) - 16
 
 func _notice(key: String) -> void:
-	if key in ["HERB_FOUND", "LANTERN_FOUND", "CHEST_OPENED", "TRADE_DONE", "POTION_CRAFTED", "LEVEL_UP", "ENCOUNTER_SAVED"]:
+	if key in ["HERB_FOUND", "LANTERN_FOUND", "CHEST_OPENED", "TRADE_DONE", "POTION_CRAFTED", "LEVEL_UP", "ENCOUNTER_SAVED", "SALVAGE_FOUND", "COMMISSION_UPDATED"]:
 		play_ui("collect")
 	elif key == "RESTED":
 		play_ui("heal")
@@ -166,4 +168,18 @@ func shutdown() -> void:
 			voice.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	await get_tree().create_timer(0.1, true).timeout
+	# AudioServer retires stopped decoders on the main thread after a mix.
+	for i in 30:
+		await get_tree().process_frame
+		if _resources_drained():
+			break
+
+func _resources_drained() -> bool:
+	for id in samples:
+		# The cache owns one reference; dictionary lookup supplies the temporary second.
+		if samples[id].get_reference_count() > 2:
+			return false
+	for resource in loop_resources:
+		if resource.get_ref() != null:
+			return false
+	return true

@@ -1,0 +1,18 @@
+{
+  "status": "first-act runtime episode; not complete campaign",
+  "title_key": "COMMISSION_TITLE",
+  "region": "workshop",
+  "principles": [
+    "two observations before hearing both groups",
+    "three supply approaches, including a route without combat or money",
+    "remembered choice with visible access and service consequences",
+    "essential NPCs remain available; no irreversible death"
+  ],
+  "runtime": "scripts/quests/commission_rules.gd",
+  "localization_prefix": "COMM_",
+  "canonical_names": {
+    "warden": "Эдна",
+    "tender": "Ясна",
+    "wright": "Лиор"
+  }
+}

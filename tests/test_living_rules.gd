@@ -42,7 +42,7 @@ func _initialize() -> void:
 	check(Trade.quote("herb", false, 10) >= Trade.quote("herb", true, 10), "discount cannot create resale profit")
 	var state := State.defaults()
 	check(State.valid(state), "default living-world state validates")
-	for key in ["minutes", "seed", "npcs", "reputation", "seen", "next_event", "active"]:
+	for key in ["minutes", "seed", "npcs", "reputation", "seen", "next_event", "active", "commission"]:
 		var bad := state.duplicate(true)
 		bad.erase(key)
 		check(not State.valid(bad), "missing world field rejected")

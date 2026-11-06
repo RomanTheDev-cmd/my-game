@@ -188,6 +188,9 @@ func _reserved(point: Vector2) -> bool:
 	for key in ["keeper", "wayfarer", "merchant", "camp", "exit", "event_point"]:
 		if definition.has(key) and point.distance_to(definition[key]) < 50:
 			return true
+	for portal in Regions.exits(region):
+		if point.distance_to(portal.point) < 140:
+			return true
 	for entry in definition.enemies:
 		if point.distance_to(entry[1]) < 45:
 			return true

@@ -1,4 +1,5 @@
 extends RefCounted
+const TENDER_HERBS := 2
 const RECIPES := {"potion": {"herb": 3}}
 
 static func craft(id: String, inventory: Dictionary) -> Dictionary:
@@ -18,4 +19,15 @@ static func consume(id: String, inventory: Dictionary) -> Dictionary:
 		return {}
 	var result := inventory.duplicate(true)
 	result[id] = int(result[id]) - 1
+	return result
+
+static func brew_with_tender(inventory: Dictionary, trust: int) -> Dictionary:
+	if trust < 2 or int(inventory.get("potion", 0)) >= 999:
+		return {}
+	var cost := TENDER_HERBS
+	if int(inventory.get("herb", 0)) < cost:
+		return {}
+	var result := inventory.duplicate()
+	result["herb"] = int(result.herb) - cost
+	result["potion"] = int(result.get("potion", 0)) + 1
 	return result

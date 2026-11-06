@@ -1,4 +1,5 @@
 extends Node
+const CommissionScreen = preload("res://scripts/ui/commission_screen.gd")
 const World = preload("res://scripts/world/world.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const EncounterRules = preload("res://scripts/world/living/encounter_rules.gd")
@@ -274,7 +275,7 @@ func show_journal() -> void:
 	if Session.aid_quest > 0:
 		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_label(contents, "").text = "%s: %d" % [tr("ROADFOLK_TRUST"), int(Session.world_state.reputation.roadfolk)]
+	CommissionScreen.journal(self, contents)
 	_label(contents, "INVENTORY", 23).add_theme_color_override("font_color", gold)
 	var entries := 0
 	for item in Session.inventory:
@@ -290,10 +291,12 @@ func show_journal() -> void:
 	_button("DRINK_POTION", func():
 		world.player.drink_potion()
 		show_journal(), contents).disabled = int(Session.inventory.get("potion", 0)) < 1 or world.player.health >= 100
-	_button("BACK", resume)
-	_focus_first()
+	_button("BACK", resume).grab_focus()
 
 func show_dialog(kind: String = "keeper") -> void:
+	if kind.begins_with("commission:"):
+		show_commission(kind.trim_prefix("commission:"))
+		return
 	if kind == "merchant_closed":
 		current_screen = "dialog"
 		_page("MERCHANT_CLOSED", 580)
@@ -325,6 +328,8 @@ func show_dialog(kind: String = "keeper") -> void:
 			Session.advance_quest("turn_in")
 			world.save_safe()
 			show_dialog())
+	if Session.quest == 3:
+		_button("COMMISSION_TITLE", show_commission.bind("keeper"))
 	_button("LATER" if Session.quest == 0 else "CLOSE", resume)
 	_focus_first()
 
@@ -379,6 +384,7 @@ func _build_hud() -> void:
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt.add_theme_color_override("font_color", gold)
 	quest_label = _label(bottom, "QUEST_0", 16)
+	quest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	quest_label.add_theme_color_override("font_shadow_color", Color("14292a"))
 	quest_label.add_theme_constant_override("shadow_offset_x", 2)
 	quest_label.add_theme_constant_override("shadow_offset_y", 2)
@@ -415,7 +421,11 @@ func update_hud() -> void:
 	health_bar.tooltip_text = "%s: %d/100" % [tr("HP"), int(world.player.health)]
 	stamina_bar.tooltip_text = "%s: %d/100" % [tr("STAMINA"), int(world.player.stamina)]
 	mana_bar.tooltip_text = "%s: %d/100" % [tr("MANA"), int(world.player.mana)]
-	quest_label.text = tr("AID_QUEST_1") if Session.aid_quest == 1 else tr("QUEST_%d" % Session.quest)
+	var commission_stage := int(Session.world_state.commission.stage)
+	if commission_stage > 0 and (commission_stage < 6 or Session.aid_quest != 1):
+		quest_label.text = tr("COMMISSION_HINT_%d" % commission_stage)
+	else:
+		quest_label.text = tr("AID_QUEST_1") if Session.aid_quest == 1 else tr("QUEST_%d" % Session.quest)
 	var near: String = world.nearby_key()
 	prompt.text = tr("INTERACT") + " · " + tr(near) if near != "" else ""
 
@@ -498,7 +508,7 @@ func show_map() -> void:
 	map.player_position = world.player.position
 	map.facing = world.player.facing
 	map.obstacles = world.navigation.obstacles
-	for npc in [world.merchant, world.keeper, world.wayfarer]:
+	for npc in world.npcs.values():
 		if npc.visible:
 			map.npcs[npc.kind] = npc.position
 	screen.add_child(map)
@@ -606,3 +616,6 @@ func _quit_game() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_quit_game()
+
+func show_commission(target: String) -> void:
+	CommissionScreen.show_dialog(self, target)

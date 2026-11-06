@@ -2,8 +2,12 @@ extends RefCounted
 const Gear = preload("res://scripts/items/equipment_rules.gd")
 const CONSUMABLES := {"herb": {"price": 2, "sell": 1}, "potion": {"price": 5, "sell": 2}}
 
-static func stock() -> Array:
-	return Gear.ITEMS.keys() + CONSUMABLES.keys()
+static func stock(group: String = "roadfolk") -> Array:
+	if group == "wardens":
+		return ["watch_spear", "iron_shield", "potion"]
+	if group != "roadfolk":
+		return []
+	return Gear.ITEMS.keys().filter(func(id): return Gear.ITEMS[id].get("vendor", "roadfolk") == "roadfolk") + CONSUMABLES.keys()
 
 static func buy(id: String, inventory: Dictionary, owned: Array, trust: int = 0) -> Dictionary:
 	var gear := Gear.ITEMS.has(id)

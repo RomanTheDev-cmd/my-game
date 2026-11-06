@@ -5,6 +5,7 @@ const ITEMS := {
 	"road_sword": {"slot": "weapon", "damage": 28.0, "reach": 49.0, "cooldown": 0.42, "price": 6, "sell": 2},
 	"dagger": {"slot": "weapon", "damage": 22.0, "reach": 42.0, "cooldown": 0.28, "price": 9, "sell": 3},
 	"iron_sword": {"slot": "weapon", "damage": 36.0, "reach": 52.0, "cooldown": 0.48, "price": 15, "sell": 5},
+	"watch_spear": {"slot": "weapon", "damage": 32.0, "reach": 86.0, "cooldown": 0.6, "two_handed": true, "price": 19, "sell": 6, "vendor": "wardens"},
 	"polearm": {"slot": "weapon", "damage": 44.0, "reach": 70.0, "cooldown": 0.7, "two_handed": true, "price": 20, "sell": 7},
 	"cloth": {"slot": "armor", "reduction": 0.0, "price": 4, "sell": 1},
 	"quilted": {"slot": "armor", "reduction": 0.12, "price": 10, "sell": 3},

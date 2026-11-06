@@ -4,7 +4,7 @@ const WorldState = preload("res://scripts/world/living/world_state.gd")
 const Gear = preload("res://scripts/items/equipment_rules.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
-const VERSION := 5
+const VERSION := 6
 const DEFAULT_PATH := "user://save.json"
 
 static func migrate(data: Variant) -> Dictionary:
@@ -34,8 +34,20 @@ static func migrate(data: Variant) -> Dictionary:
 		upgraded["opened"] = []
 		upgraded.inventory["coin"] = mini(999, int(coins) + upgraded.defeated.size() * 3)
 	if upgraded.get("version") == 4:
-		upgraded["version"] = VERSION
+		upgraded["version"] = 5
 		upgraded["world_state"] = WorldState.defaults()
+		upgraded.world_state.reputation = {"roadfolk": 0}
+		upgraded.world_state.erase("commission")
+	if upgraded.get("version") == 5:
+		var world = upgraded.get("world_state")
+		if not world is Dictionary or not world.get("reputation") is Dictionary or world.has("commission"):
+			return {}
+		if world.reputation.size() != 1 or not WorldState.number(world.reputation.get("roadfolk"), -10, 10, true):
+			return {}
+		upgraded["version"] = VERSION
+		world.reputation["wardens"] = 0
+		world.reputation["tenders"] = 0
+		world["commission"] = WorldState.Commission.defaults()
 	return upgraded
 
 static func validate(data: Variant) -> bool:
@@ -77,6 +89,8 @@ static func validate(data: Variant) -> bool:
 	if not data.get("quest") is float and not data.get("quest") is int:
 		return false
 	if data.quest < 0 or data.quest > 3 or floorf(data.quest) != data.quest:
+		return false
+	if data.world_state.commission.stage > 0 and data.quest != 3:
 		return false
 	if not data.get("defeated") is Array or not data.get("inventory") is Dictionary:
 		return false

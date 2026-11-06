@@ -1,4 +1,6 @@
 extends Node
+const Factions = preload("res://scripts/factions/faction_rules.gd")
+const Commission = preload("res://scripts/quests/commission_rules.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const WorldState = preload("res://scripts/world/living/world_state.gd")
 const Encounters = preload("res://scripts/world/living/encounter_rules.gd")
@@ -230,8 +232,11 @@ func unequip_slot(slot: String) -> void:
 		equipped[slot] = ""
 		changed.emit()
 
-func trade_item(id: String, selling: bool, position: Vector2, current_vitals: Dictionary) -> bool:
-	var result := Trade.sell(id, inventory, gear_owned, equipped, int(world_state.reputation.roadfolk)) if selling else Trade.buy(id, inventory, gear_owned, int(world_state.reputation.roadfolk))
+func trade_item(id: String, selling: bool, position: Vector2, current_vitals: Dictionary, group: String = "roadfolk") -> bool:
+	if id not in Trade.stock(group) or (group == "wardens" and not Factions.trusted(world_state.reputation, group)):
+		return false
+	var trust := int(world_state.reputation[group])
+	var result := Trade.sell(id, inventory, gear_owned, equipped, trust) if selling else Trade.buy(id, inventory, gear_owned, trust)
 	if result.is_empty():
 		notice.emit("TRADE_FAILED")
 		return false
@@ -299,4 +304,51 @@ func resolve_encounter(choice: String, position: Vector2, current_vitals: Dictio
 		return false
 	apply(data)
 	notice.emit("ENCOUNTER_SAVED")
+	return true
+
+func commission_event(event: String, position: Vector2, current_vitals: Dictionary) -> bool:
+	var outcome := Commission.transition(world_state.commission, inventory, current_vitals.mana, world_state.reputation, event, quest, defeated)
+	if outcome.is_empty():
+		notice.emit("COMMISSION_UNAVAILABLE")
+		return false
+	var data := snapshot(position, current_vitals)
+	data.world_state.commission = outcome.commission
+	data.world_state.reputation = outcome.reputation
+	data.inventory = outcome.inventory
+	data.vitals.mana = outcome.mana
+	data.xp = mini(100000, xp + int(outcome.xp))
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	var previous_level := Skills.level(xp)
+	apply(data)
+	if Skills.level(xp) > previous_level:
+		notice.emit("LEVEL_UP")
+	notice.emit("COMMISSION_UPDATED")
+	return true
+
+func collect_salvage(id: String, position: Vector2, current_vitals: Dictionary) -> bool:
+	if region != "workshop" or id not in ["workshop:scrap_1", "workshop:scrap_2", "workshop:scrap_3"] or id in gathered or int(inventory.get("scrap", 0)) >= 999:
+		return false
+	var data := snapshot(position, current_vitals)
+	data.inventory["scrap"] = int(data.inventory.get("scrap", 0)) + 1
+	data.gathered.append(id)
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("SALVAGE_FOUND")
+	return true
+
+func brew_with_tender(position: Vector2, current_vitals: Dictionary) -> bool:
+	var result := Items.brew_with_tender(inventory, int(world_state.reputation.tenders))
+	if result.is_empty():
+		return false
+	var data := snapshot(position, current_vitals)
+	data.inventory = result
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("POTION_CRAFTED")
 	return true

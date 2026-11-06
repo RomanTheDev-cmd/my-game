@@ -19,6 +19,7 @@ func _ready() -> void:
 	sprite.texture = preload("res://assets/sprites/keeper.png") if kind == "keeper" else preload("res://assets/sprites/wayfarer.png")
 	sprite.position.y = -12
 	add_child(sprite)
+	sprite.modulate = {"warden": Color("99b6c5"), "wright": Color("d7bb8b"), "tender": Color("a5c9a5")}.get(kind, Color.WHITE)
 
 func set_destination(point: Vector2) -> void:
 	if point.distance_to(destination) > 1:
@@ -42,3 +43,15 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if velocity.x != 0:
 		sprite.flip_h = velocity.x < 0
+
+func _draw() -> void:
+	if kind == "warden":
+		draw_rect(Rect2(-12, -12, 7, 10), Color("a6b6ba"))
+		draw_rect(Rect2(-11, -11, 5, 7), Color("53757b"))
+	elif kind == "wright":
+		draw_rect(Rect2(8, -17, 2, 15), Color("9d8057"))
+		draw_rect(Rect2(5, -18, 8, 4), Color("afbbb8"))
+	elif kind == "tender":
+		draw_rect(Rect2(-12, -5, 8, 5), Color("8b7552"))
+		for i in 3:
+			draw_rect(Rect2(-12 + i * 2, -10 - i % 2 * 2, 3, 6), Color("a8c084"))

@@ -52,7 +52,11 @@ static func _equip(ui: Node, id: String, worn: bool) -> void:
 
 static func shop(ui: Node, selling: bool = false) -> void:
 	ui.current_screen = "shop"
-	ui._page("MERCHANT_NAME", 620)
+	var vendor: Dictionary = ui.world.vendor_context()
+	if vendor.is_empty():
+		ui.resume()
+		return
+	ui._page(vendor.name, 620)
 	var purse: Label = ui._label(ui.screen, "", 17)
 	purse.text = "%s: %d" % [ui.tr("COIN"), int(Session.inventory.get("coin", 0))]
 	var tabs := HBoxContainer.new()
@@ -67,7 +71,7 @@ static func shop(ui: Node, selling: bool = false) -> void:
 	if selling:
 		ui._label(ui.screen, "SELL_EQUIPPED_HINT", 12)
 	var box := content(ui, 220 if selling else 240)
-	for id in Trade.stock():
+	for id in Trade.stock(vendor.group):
 		var definition: Dictionary = Gear.ITEMS.get(id, Trade.CONSUMABLES.get(id, {}))
 		if selling and id not in Session.gear_owned and int(Session.inventory.get(id, 0)) < 1:
 			continue
@@ -77,14 +81,14 @@ static func shop(ui: Node, selling: bool = false) -> void:
 		details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(details)
 		var label: Label = ui._label(details, "", 16)
-		label.text = "%s · %d" % [ui.tr(id.to_upper()), Trade.quote(id, selling, int(Session.world_state.reputation.roadfolk))]
+		label.text = "%s · %d" % [ui.tr(id.to_upper()), Trade.quote(id, selling, int(vendor.trust))]
 		var description: Label = ui._label(details, id.to_upper() + "_DESC", 12)
 		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		description.custom_minimum_size.x = 380
 		var button: Button = ui._button("SELL" if selling else "BUY", _trade.bind(ui, id, selling), row)
 		button.name = "trade_" + id
 		button.custom_minimum_size.x = 130
-		var result := Trade.sell(id, Session.inventory, Session.gear_owned, Session.equipped, int(Session.world_state.reputation.roadfolk)) if selling else Trade.buy(id, Session.inventory, Session.gear_owned, int(Session.world_state.reputation.roadfolk))
+		var result := Trade.sell(id, Session.inventory, Session.gear_owned, Session.equipped, int(vendor.trust)) if selling else Trade.buy(id, Session.inventory, Session.gear_owned, int(vendor.trust))
 		button.disabled = result.is_empty()
 	ui._button("BACK", ui.resume)
 	(sell_tab if selling else buy_tab).grab_focus()

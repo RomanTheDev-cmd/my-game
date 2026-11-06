@@ -10,10 +10,20 @@ const REGIONS := {
 	},
 	"lake": {
 		"location": "LOCATION_LAKE", "description": "REGION_LAKE", "camp": Vector2(360, 610),
-		"extra_exits": [{"point": Vector2(1800, 650), "destination": "ruins", "arrival": Vector2(260, 650), "label": "TO_RUINS", "direction": 1}],
+		"extra_exits": [{"point": Vector2(1800, 650), "destination": "ruins", "arrival": Vector2(260, 650), "label": "TO_RUINS", "direction": 1},
+			{"point": Vector2(1750, 1120), "destination": "workshop", "arrival": Vector2(240, 650), "label": "TO_WORKSHOP", "direction": 1}],
 		"event_point": Vector2(690, 700), "wayfarer": Vector2(480, 620), "exit": Vector2(135, 650), "destination": "crossing", "arrival": Vector2(1730, 500), "exit_label": "TO_CROSSING",
 		"herbs": [Vector2(600, 650), Vector2(1100, 880), Vector2(1500, 750)],
 		"enemies": [["lake_1", Vector2(1210, 840)], ["lake_2", Vector2(1510, 860), "ranged"]]
+	},
+	"workshop": {
+		"location": "LOCATION_WORKSHOP", "description": "REGION_WORKSHOP", "camp": Vector2(380, 730),
+		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1800, 1160), "exit_label": "TO_LAKE",
+		"warden": Vector2(360, 540), "wright": Vector2(570, 540), "tender": Vector2(520, 870),
+		"herbs": [Vector2(580, 850), Vector2(780, 1080)],
+		"enemies": [["workshop_1", Vector2(1230, 800)], ["workshop_archer", Vector2(1550, 900), "ranged"]],
+		"commission_sites": {"wheel": Vector2(960, 600), "archive": Vector2(1450, 460), "workbench": Vector2(680, 600), "cache": Vector2(1540, 1050)},
+		"salvage": [{"id": "workshop:scrap_1", "point": Vector2(730, 450)}, {"id": "workshop:scrap_2", "point": Vector2(860, 900)}, {"id": "workshop:scrap_3", "point": Vector2(1320, 360)}]
 	},
 	"ruins": {
 		"location": "LOCATION_RUINS", "description": "REGION_RUINS", "camp": Vector2(290, 870),

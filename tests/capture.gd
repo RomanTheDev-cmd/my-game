@@ -127,5 +127,62 @@ func capture() -> void:
 		await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/protection.png")
+	game.new_game()
+	session_for_skills.quest = 3
+	session_for_skills.xp = 120
+	session_for_skills.region = "workshop"
+	session_for_skills.arrival = Vector2(930, 600)
+	session_for_skills.inventory = {"coin": 25, "herb": 4, "potion": 1}
+	session_for_skills.world_state.commission = {"stage": 4, "survey": ["wheel", "archive"], "heard": ["wardens", "tenders"], "supply": "craft", "settlement": ""}
+	game._build_world()
+	game.resume()
+	for i in 12:
+		await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/courtyard.png")
+	game.show_map()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/courtyard_map.png")
+	game.resume()
+	game.world.player.position = game.world.definition.commission_sites.wheel
+	game.world.interact()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/commission_choice.png")
+	if not game.world.commission_action("restore_shared"):
+		printerr("ERROR: capture fixture cannot resolve action")
+		await TestExit.finish(self, 1)
+		return
+	game.resume()
+	for i in 12:
+		await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/courtyard_after.png")
+	game.world.player.position = game.world.npcs.warden.position
+	game.world.interact()
+	game.screen.find_child("warden_shop", true, false).pressed.emit()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/faction_shop.png")
+	game.show_journal()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/journal_factions.png")
+	game.resume()
+	game.world.player.position = game.world.npcs.tender.position
+	game.world.interact()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/faction_service.png")
+	session_for_skills.region = "crossing"
+	session_for_skills.arrival = Vector2(520, 490)
+	session_for_skills.inventory.coin = 984
+	game._build_world()
+	game.resume()
+	game.show_commission("keeper")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/reward_capacity.png")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)

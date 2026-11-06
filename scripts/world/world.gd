@@ -1,4 +1,9 @@
 extends Node2D
+const Factions = preload("res://scripts/factions/faction_rules.gd")
+const Items = preload("res://scripts/items/inventory_rules.gd")
+const Commission = preload("res://scripts/quests/commission_rules.gd")
+const CommissionMarker = preload("res://scripts/world/commission_marker.gd")
+const Workshop = preload("res://scripts/world/workshop_landscape.gd")
 const Schedule = preload("res://scripts/world/living/npc_schedule.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const Encounters = preload("res://scripts/world/living/encounter_rules.gd")
@@ -17,6 +22,11 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var npcs: Dictionary = {}
+var commission_markers: Dictionary = {}
+var salvage_markers: Array[Node2D] = []
+var commission_gate: StaticBody2D
+var landscape: Node2D
 var merchant: CharacterBody2D
 var player: CharacterBody2D
 var wayfarer: CharacterBody2D
@@ -35,16 +45,19 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	var land := Landscape.new()
-	land.region = Session.region
-	land.z_index = -2
-	add_child(land)
+	landscape = Workshop.new() if Session.region == "workshop" else Landscape.new()
+	landscape.region = Session.region
+	landscape.z_index = -2
+	add_child(landscape)
+	_build_commission_objects()
 	navigation = Navigator.new()
 	navigation.configure(self)
-	merchant = _spawn_npc("merchant")
+	for kind in Schedule.KINDS:
+		npcs[kind] = _spawn_npc(kind)
+	merchant = npcs.merchant
 	merchant.modulate = Color("c2ad9b")
-	keeper = _spawn_npc("keeper")
-	wayfarer = _spawn_npc("wayfarer")
+	keeper = npcs.keeper
+	wayfarer = npcs.wayfarer
 	event_marker = EncounterMarker.new()
 	event_marker.hide()
 	add_child(event_marker)
@@ -97,6 +110,8 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_commission_environment)
+	_update_commission_environment()
 
 func _process(delta: float) -> void:
 	time += delta
@@ -144,6 +159,15 @@ func nearby_key() -> String:
 		return "KEEPER_NAME"
 	if wayfarer.visible and player.position.distance_to(wayfarer.position) < 45:
 		return "AID_NAME"
+	for kind in ["warden", "wright", "tender"]:
+		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
+			return kind.to_upper() + "_NAME"
+	for target in commission_markers:
+		if player.position.distance_to(commission_markers[target].position) < 45:
+			return "COMMISSION_" + target.to_upper()
+	for marker in salvage_markers:
+		if marker.visible and player.position.distance_to(marker.position) < 30:
+			return "SCRAP"
 	if player.position.distance_to(definition.camp) < 45:
 		return "REST"
 	if lantern.visible and player.position.distance_to(lantern.position) < 40:
@@ -168,6 +192,20 @@ func interact() -> void:
 		for portal in Regions.exits(Session.region):
 			if portal.label == key:
 				travel_requested.emit(portal.destination, portal.arrival)
+				return
+	if key in ["WARDEN_NAME", "WRIGHT_NAME", "TENDER_NAME"]:
+		dialog_requested.emit("commission:" + key.trim_suffix("_NAME").to_lower())
+		return
+	if key.begins_with("COMMISSION_"):
+		dialog_requested.emit("commission:" + key.trim_prefix("COMMISSION_").to_lower())
+		return
+	if key == "SCRAP":
+		if not safe_to_rest():
+			Session.notice.emit("CHECKPOINT_UNSAFE")
+			return
+		for marker in salvage_markers:
+			if marker.visible and player.position.distance_to(marker.position) < 30:
+				Session.collect_salvage(marker.get_meta("id"), player.position, player_vitals())
 				return
 	match key:
 		"ENCOUNTER": dialog_requested.emit("encounter")
@@ -269,9 +307,10 @@ func aid_choice(event: String) -> bool:
 
 func trade(id: String, selling: bool) -> bool:
 	_sync_context()
-	if nearby_key() != "MERCHANT_NAME" or not safe_to_rest():
+	var vendor := vendor_context()
+	if vendor.is_empty() or not safe_to_rest():
 		return false
-	return Session.trade_item(id, selling, player.position, player_vitals())
+	return Session.trade_item(id, selling, player.position, player_vitals(), vendor.group)
 
 func _spawn_npc(kind: String) -> CharacterBody2D:
 	var npc := ScheduledNpc.new()
@@ -286,12 +325,12 @@ func _spawn_npc(kind: String) -> CharacterBody2D:
 	return npc
 
 func _update_npcs() -> void:
-	for npc in [merchant, keeper, wayfarer]:
+	for npc in npcs.values():
 		if is_instance_valid(npc) and npc.visible:
 			npc.set_destination(Schedule.destination(Session.region, npc.kind, Session.world_state.minutes, Session.aid_quest))
 
 func _sync_context() -> void:
-	for npc in [merchant, keeper, wayfarer]:
+	for npc in npcs.values():
 		if is_instance_valid(npc) and npc.visible:
 			Session.world_state.npcs[Session.region + ":" + npc.kind] = [npc.position.x, npc.position.y]
 
@@ -334,3 +373,87 @@ func resolve_encounter(choice: String) -> bool:
 	player.mana = Session.vitals.mana
 	_update_event_marker()
 	return true
+
+func _build_commission_objects() -> void:
+	if Session.region != "workshop":
+		return
+	if Session.world_state.commission.stage < 5:
+		commission_gate = StaticBody2D.new()
+		commission_gate.position = Workshop.GATE.get_center()
+		var collider := CollisionShape2D.new()
+		var shape := RectangleShape2D.new()
+		shape.size = Workshop.GATE.size
+		collider.shape = shape
+		commission_gate.add_child(collider)
+		add_child(commission_gate)
+	for kind in definition.commission_sites:
+		var marker := CommissionMarker.new()
+		marker.kind = kind
+		marker.position = definition.commission_sites[kind]
+		add_child(marker)
+		commission_markers[kind] = marker
+	for entry in definition.salvage:
+		var marker := CommissionMarker.new()
+		marker.kind = "scrap"
+		marker.position = entry.point
+		marker.set_meta("id", entry.id)
+		add_child(marker)
+		salvage_markers.append(marker)
+
+func _update_commission_environment() -> void:
+	if not is_inside_tree() or Session.region != "workshop" or landscape.region != Session.region:
+		return
+	var state: Dictionary = Session.world_state.commission
+	if state.stage >= 5 and is_instance_valid(commission_gate):
+		remove_child(commission_gate)
+		commission_gate.queue_free()
+		commission_gate = null
+		navigation.configure(self)
+	landscape.queue_redraw()
+	for kind in commission_markers:
+		var marker: Node2D = commission_markers[kind]
+		marker.done = (state.stage >= 5 if kind == "wheel" else (kind in state.survey or (kind == "workbench" and state.supply == "craft") or (kind == "cache" and state.supply == "recover")))
+		marker.queue_redraw()
+	for marker in salvage_markers:
+		marker.visible = marker.get_meta("id") not in Session.gathered
+
+func can_commission(event: String) -> bool:
+	if not Commission.SITES.has(event) or Commission.SITES[event][0] != Session.region or player.health <= 0 or not safe_to_rest():
+		return false
+	var target: String = Commission.SITES[event][1]
+	var point := Vector2.INF
+	if npcs.has(target):
+		if not npcs[target].visible:
+			return false
+		point = npcs[target].position
+	else:
+		point = definition.get("commission_sites", {}).get(target, Vector2.INF)
+	if player.position.distance_to(point) >= 52:
+		return false
+	return not Commission.transition(Session.world_state.commission, Session.inventory, player.mana, Session.world_state.reputation, event, Session.quest, Session.defeated).is_empty()
+
+func commission_action(event: String) -> bool:
+	if not can_commission(event):
+		Session.notice.emit("COMMISSION_UNAVAILABLE")
+		return false
+	_sync_context()
+	if not Session.commission_event(event, player.position, player_vitals()):
+		return false
+	player.mana = Session.vitals.mana
+	return true
+
+func vendor_context() -> Dictionary:
+	if merchant.visible and player.position.distance_to(merchant.position) < 45 and Schedule.shop_open(Session.world_state.minutes):
+		return {"group": "roadfolk", "name": "MERCHANT_NAME", "trust": int(Session.world_state.reputation.roadfolk)}
+	if npcs.warden.visible and player.position.distance_to(npcs.warden.position) < 48 and Factions.trusted(Session.world_state.reputation, "wardens"):
+		return {"group": "wardens", "name": "WARDEN_NAME", "trust": int(Session.world_state.reputation.wardens)}
+	return {}
+
+func can_brew_with_tender() -> bool:
+	return npcs.tender.visible and player.health > 0 and player.position.distance_to(npcs.tender.position) < 48 and safe_to_rest() and not Items.brew_with_tender(Session.inventory, int(Session.world_state.reputation.tenders)).is_empty()
+
+func brew_with_tender() -> bool:
+	if not can_brew_with_tender():
+		return false
+	_sync_context()
+	return Session.brew_with_tender(player.position, player_vitals())

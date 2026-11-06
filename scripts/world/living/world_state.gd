@@ -1,10 +1,12 @@
 extends RefCounted
+const Factions = preload("res://scripts/factions/faction_rules.gd")
+const Commission = preload("res://scripts/quests/commission_rules.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const Schedule = preload("res://scripts/world/living/npc_schedule.gd")
 const Encounters = preload("res://scripts/world/living/encounter_rules.gd")
 
 static func defaults() -> Dictionary:
-	return {"minutes": Clock.START, "seed": Clock.DEFAULT_SEED, "npcs": {}, "reputation": {"roadfolk": 0},
+	return {"minutes": Clock.START, "seed": Clock.DEFAULT_SEED, "npcs": {}, "reputation": Factions.defaults(), "commission": Commission.defaults(),
 		"seen": [], "next_event": Clock.START + 30, "active": {}}
 
 static func number(value: Variant, minimum: float, maximum: float, integer: bool = false) -> bool:
@@ -15,7 +17,7 @@ static func valid(data: Variant) -> bool:
 		return false
 	if not Schedule.valid_positions(data.get("npcs")) or not data.get("reputation") is Dictionary:
 		return false
-	if data.reputation.size() != 1 or not number(data.reputation.get("roadfolk"), -10, 10, true):
+	if not Factions.valid(data.reputation) or not Commission.valid(data.get("commission")):
 		return false
 	if not data.get("seen") is Array or not number(data.get("next_event"), 0, 1000000000):
 		return false
