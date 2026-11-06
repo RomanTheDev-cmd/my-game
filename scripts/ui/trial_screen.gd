@@ -28,6 +28,8 @@ static func show_dialog(ui: Node, target: String) -> void:
 		var button: Button = ui._button("TRIAL_ACTION_" + event.to_upper(), _act.bind(ui, event, target), contents)
 		button.name = "trial_" + event
 		button.disabled = not ui.world.can_trial(event)
+	if target == "altar" and (Session.nature.stage in [1, 2] or Session.nature.cure in [1, 2]):
+		ui._button("NATURE_TITLE", ui.show_nature.bind("altar"), contents).name = "nature_water"
 	ui._button("BACK", ui.resume)
 	ui._focus_first()
 static func _act(ui: Node, event: String, target: String) -> void:

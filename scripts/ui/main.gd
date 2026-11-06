@@ -1,4 +1,8 @@
 extends Node
+const DialogueRules = preload("res://scripts/nature/dialogue_rules.gd")
+const DialogueScreen = preload("res://scripts/ui/dialogue_screen.gd")
+const Nature = preload("res://scripts/nature/nature_rules.gd")
+const NatureScreen = preload("res://scripts/ui/nature_screen.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
 const TrialScreen = preload("res://scripts/ui/trial_screen.gd")
 const CommissionScreen = preload("res://scripts/ui/commission_screen.gd")
@@ -17,6 +21,7 @@ var overlay: Control
 var screen: VBoxContainer
 var toast: Label
 var toast_time := 0.0
+var nature_label: Label
 var human_label: Label
 var shield_label: Label
 var boss_panel: VBoxContainer
@@ -209,7 +214,7 @@ func show_pause() -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	screen.add_child(grid)
-	for entry in [["RESUME", resume], ["MAP", show_map], ["SPELLBOOK", show_spells], ["SKILLS", show_skills], ["EQUIPMENT", show_equipment],
+	for entry in [["NATURE_TITLE", show_nature], ["RESUME", resume], ["MAP", show_map], ["SPELLBOOK", show_spells], ["SKILLS", show_skills], ["EQUIPMENT", show_equipment],
 		["WAIT", show_wait], ["SAVE", world.save_safe], ["LOAD", load_game], ["SETTINGS", show_settings], ["MAIN_MENU", show_title]]:
 		var action := _button(entry[0], entry[1], grid)
 		if entry[0] == "WAIT":
@@ -280,6 +285,7 @@ func show_journal() -> void:
 	if Session.aid_quest > 0:
 		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	NatureScreen.journal(self, contents)
 	TrialScreen.journal(self, contents)
 	CommissionScreen.journal(self, contents)
 	_label(contents, "INVENTORY", 23).add_theme_color_override("font_color", gold)
@@ -299,7 +305,12 @@ func show_journal() -> void:
 		show_journal(), contents).disabled = int(Session.inventory.get("potion", 0)) < 1 or world.player.health >= 100
 	_button("BACK", resume).grab_focus()
 
-func show_dialog(kind: String = "keeper") -> void:
+func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void:
+	var role := kind.trim_prefix("commission:").trim_prefix("reaction:")
+	if kind == "merchant_closed": role = "merchant"
+	if not bypass_reaction and DialogueRules.GROUPS.has(role) and DialogueRules.context(Session.nature) != "":
+		DialogueScreen.show_page(self, role, kind if not kind.begins_with("reaction:") else "")
+		return
 	if kind.begins_with("trial:"):
 		show_trial(kind.trim_prefix("trial:"))
 		return
@@ -339,6 +350,8 @@ func show_dialog(kind: String = "keeper") -> void:
 			show_dialog())
 	if Session.quest == 3:
 		_button("COMMISSION_TITLE", show_commission.bind("keeper"))
+	if Session.nature.kind == "vampire" or Session.nature.stage == 4:
+		_button("NATURE_CURE_TITLE", show_nature.bind("keeper")).name = "nature_keeper"
 	_button("LATER" if Session.quest == 0 else "CLOSE", resume)
 	_focus_first()
 
@@ -367,6 +380,7 @@ func _build_hud() -> void:
 	stats.custom_minimum_size.x = 220
 	row.add_child(stats)
 	human_label = _label(stats, "HUMAN", 14)
+	nature_label = _label(stats, "", 11)
 	health_bar = _bar(stats, Color("b3665a"))
 	stamina_bar = _bar(stats, Color("aeab70"))
 	mana_bar = _bar(stats, Color("7ca3b1"))
@@ -427,7 +441,8 @@ func _bar(parent: Node, color: Color) -> ProgressBar:
 func update_hud() -> void:
 	if not is_instance_valid(world) or health_bar == null:
 		return
-	human_label.text = "%s · %s %d" % [tr("HUMAN"), tr("LEVEL"), Skills.level(Session.xp)]
+	human_label.text = "%s · %s %d" % [tr("NATURE_KIND_" + Session.nature.kind.to_upper()), tr("LEVEL"), Skills.level(Session.xp)]
+	nature_label.text = tr("NATURE_BLOOD") % Session.nature.blood + " · U / V / N" if Session.nature.kind == "vampire" else (tr("NATURE_KEYS") if Session.nature.gift != "" else "")
 	location_label.text = tr(world.definition.location)
 	var minutes: float = Session.world_state.minutes
 	var weather := Clock.weather(minutes, int(Session.world_state.seed))
@@ -453,6 +468,8 @@ func update_hud() -> void:
 	var trial_stage := Trial.stage(Session.gathered, Session.defeated, Session.opened)
 	if trial_stage > 0 and trial_stage < 5:
 		quest_label.text = tr("TRIAL_HINT_%d" % trial_stage)
+	if Session.nature.stage in [1, 2] or (Session.nature.kind == "vampire" and Session.nature.cure in [1, 2]):
+		quest_label.text = tr(NatureScreen.hint(Session.nature))
 	if is_instance_valid(world.boss) and world.boss.awaiting_record:
 		quest_label.text = tr("TRIAL_RECORD_HELP")
 	var near: String = world.nearby_key()
@@ -473,8 +490,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause_game"):
 		if current_screen == "game":
 			show_pause()
-		elif current_screen in ["pause", "dialog", "journal", "settings", "map", "skills", "equipment", "shop", "wait", "spells"] and Session.running:
+		elif current_screen in ["pause", "dialog", "journal", "settings", "map", "skills", "equipment", "shop", "wait", "spells", "nature"] and Session.running:
 			resume()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("nature_book") and current_screen in ["game", "nature"]:
+		if current_screen == "game": show_nature()
+		else: resume()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("spellbook") and current_screen in ["game", "spells"]:
 		if current_screen == "game":
@@ -579,7 +600,9 @@ func show_aid_dialog() -> void:
 	elif Session.aid_quest == 1:
 		_button("AID_HERBS", _aid_action.bind("herbs")).disabled = int(Session.inventory.get("herb", 0)) < 3
 		_button("AID_COINS", _aid_action.bind("coins")).disabled = int(Session.inventory.get("coin", 0)) < 8
-		_button("AID_MAGIC", _aid_action.bind("magic")).disabled = world.player.mana < 35
+		_button("AID_MAGIC", _aid_action.bind("magic")).disabled = world.player.mana < 35 or not Nature.can_spell(Session.nature, "heal")
+	if "waterworks_report" in Session.opened:
+		_button("NATURE_TITLE", show_nature.bind("wayfarer")).name = "nature_invitation"
 	_button("CLOSE", resume)
 	_focus_first()
 
@@ -651,3 +674,6 @@ func show_commission(target: String) -> void:
 
 func show_trial(target: String) -> void:
 	TrialScreen.show_dialog(self, target)
+
+func show_nature(target: String = "status") -> void:
+	NatureScreen.show_page(self, target)

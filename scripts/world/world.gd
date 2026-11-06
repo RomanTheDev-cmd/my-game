@@ -1,4 +1,6 @@
 extends Node2D
+const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
+const Nature = preload("res://scripts/nature/nature_rules.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
 const BossEnemy = preload("res://scripts/actors/boss_enemy.gd")
 const Waterworks = preload("res://scripts/world/waterworks_landscape.gd")
@@ -219,6 +221,11 @@ func interact() -> void:
 	if key.begins_with("TRIAL_SITE_"):
 		dialog_requested.emit("trial:" + key.trim_prefix("TRIAL_SITE_").to_lower())
 		return
+	if Session.nature.form != "human" and (key.ends_with("_NAME") or key.begins_with("COMMISSION_") or key.begins_with("TRIAL_SITE_")):
+		var role: String = {"KEEPER_NAME": "keeper", "MERCHANT_NAME": "merchant", "AID_NAME": "wayfarer", "WARDEN_NAME": "warden", "WRIGHT_NAME": "wright", "TENDER_NAME": "tender"}.get(key, "")
+		if role != "": dialog_requested.emit("reaction:" + role)
+		else: Session.notice.emit("NATURE_RETURN_FORM")
+		return
 	if key.begins_with("TO_"):
 		for portal in Regions.exits(Session.region):
 			if portal.label == key:
@@ -276,8 +283,8 @@ func _on_strike(origin: Vector2, direction: Vector2) -> void:
 	for child in get_children():
 		if child is Enemy:
 			var offset: Vector2 = child.global_position - origin
-			if offset.length() < Gear.weapon(Session.equipped).reach and offset.normalized().dot(direction) > 0.15 and navigation.segment_clear(origin, child.global_position):
-				child.receive_damage(Gear.weapon(Session.equipped).damage + 4 * int(Session.skills.get("sword", 0)), direction)
+			if offset.length() < player.weapon_stats().reach and offset.normalized().dot(direction) > 0.15 and navigation.segment_clear(origin, child.global_position):
+				child.receive_damage(player.weapon_stats().damage + 4 * int(Session.skills.get("sword", 0)), direction)
 
 func _on_defeated(id: String) -> void:
 	if id not in Session.defeated:
@@ -315,6 +322,10 @@ func _on_cast_spell(origin: Vector2, direction: Vector2, amount: float, kind: St
 	bolt.direction = direction
 	bolt.damage = amount
 	bolt.kind = kind
+	bolt.blood_drained.connect(func(amount):
+		if Session.nature.kind == "vampire" and player.health > 0:
+			player.health = minf(100, player.health + amount)
+			player.stats_changed.emit())
 	add_child(bolt)
 
 func _checkpoint_before_encounter() -> void:
@@ -340,7 +351,7 @@ func aid_choice(event: String) -> bool:
 func trade(id: String, selling: bool) -> bool:
 	_sync_context()
 	var vendor := vendor_context()
-	if vendor.is_empty() or not safe_to_rest():
+	if Session.nature.form != "human" or vendor.is_empty() or not safe_to_rest():
 		return false
 	return Session.trade_item(id, selling, player.position, player_vitals(), vendor.group)
 
@@ -367,7 +378,7 @@ func _sync_context() -> void:
 			Session.world_state.npcs[Session.region + ":" + npc.kind] = [npc.position.x, npc.position.y]
 
 func can_wait() -> bool:
-	return player.health > 0 and player.position.distance_to(definition.camp) < 45 and safe_to_rest()
+	return Session.nature.form == "human" and player.health > 0 and player.position.distance_to(definition.camp) < 45 and safe_to_rest()
 
 func wait(minutes: float) -> bool:
 	if not can_wait():
@@ -450,7 +461,7 @@ func _update_commission_environment() -> void:
 		marker.visible = marker.get_meta("id") not in Session.gathered
 
 func can_commission(event: String) -> bool:
-	if not Commission.SITES.has(event) or Commission.SITES[event][0] != Session.region or player.health <= 0 or not safe_to_rest():
+	if Session.nature.form != "human" or not Commission.SITES.has(event) or Commission.SITES[event][0] != Session.region or player.health <= 0 or not safe_to_rest():
 		return false
 	var target: String = Commission.SITES[event][1]
 	var point := Vector2.INF
@@ -482,7 +493,7 @@ func vendor_context() -> Dictionary:
 	return {}
 
 func can_brew_with_tender() -> bool:
-	return npcs.tender.visible and player.health > 0 and player.position.distance_to(npcs.tender.position) < 48 and safe_to_rest() and not Items.brew_with_tender(Session.inventory, int(Session.world_state.reputation.tenders)).is_empty()
+	return Session.nature.form == "human" and npcs.tender.visible and player.health > 0 and player.position.distance_to(npcs.tender.position) < 48 and safe_to_rest() and not Items.brew_with_tender(Session.inventory, int(Session.world_state.reputation.tenders)).is_empty()
 
 func brew_with_tender() -> bool:
 	if not can_brew_with_tender():
@@ -491,7 +502,7 @@ func brew_with_tender() -> bool:
 	return Session.brew_with_tender(player.position, player_vitals())
 
 func can_trial(event: String) -> bool:
-	if not Trial.SITES.has(event) or player.health <= 0 or not safe_to_rest(): return false
+	if Session.nature.form != "human" or not Trial.SITES.has(event) or player.health <= 0 or not safe_to_rest(): return false
 	var site: Array = Trial.SITES[event]
 	if Session.region != site[0]: return false
 	var point: Vector2 = npcs.wright.position if site[1] == "wright" and npcs.wright.visible else definition.get("trial_sites", {}).get(site[1], Vector2.INF)
@@ -515,3 +526,26 @@ func record_boss_victory() -> void:
 	if Session.finish_guardian(player.position, player_vitals()):
 		boss.queue_free()
 		boss = null
+
+func can_nature(event: String) -> bool:
+	if not Nature.SITES.has(event) or player.health <= 0 or not safe_to_rest(): return false
+	var site: Array = Nature.SITES[event]
+	if Session.region != site[0]: return false
+	var point: Vector2 = npcs[site[1]].position if npcs.has(site[1]) and npcs[site[1]].visible else definition.get("trial_sites", {}).get(site[1], Vector2.INF)
+	return player.position.distance_to(point) < 52 and not Nature.resolve(Session.nature, Session.gathered, Session.opened, Session.inventory, player.mana, event).is_empty()
+
+func nature_action(event: String) -> bool:
+	if not can_nature(event): return false
+	_sync_context()
+	if not Session.nature_event(event, player.position, player_vitals()): return false
+	player.mana = Session.vitals.mana
+	return true
+
+func can_dialogue(kind: String, answer: String) -> bool:
+	if player.health <= 0 or not safe_to_rest() or not npcs.has(kind) or not npcs[kind].visible or player.position.distance_to(npcs[kind].position) >= 52: return false
+	return not Dialogue.resolve(Session.nature, Session.gathered, Session.world_state.reputation, kind, answer).is_empty()
+
+func dialogue_action(kind: String, answer: String) -> bool:
+	if not can_dialogue(kind, answer): return false
+	_sync_context()
+	return Session.dialogue_event(kind, answer, player.position, player_vitals())

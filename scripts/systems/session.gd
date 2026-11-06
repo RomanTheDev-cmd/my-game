@@ -1,4 +1,6 @@
 extends Node
+const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
+const Nature = preload("res://scripts/nature/nature_rules.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
 const Factions = preload("res://scripts/factions/faction_rules.gd")
 const Commission = preload("res://scripts/quests/commission_rules.gd")
@@ -17,6 +19,7 @@ const Inputs = preload("res://scripts/systems/input_setup.gd")
 const Store = preload("res://scripts/systems/save_store.gd")
 signal notice(key: String)
 signal changed
+var nature: Dictionary = Nature.defaults()
 var world_state: Dictionary = WorldState.defaults()
 var difficulty := 1
 var fullscreen := false
@@ -49,6 +52,7 @@ func _ready() -> void:
 	_apply_fullscreen()
 
 func fresh() -> void:
+	nature = Nature.defaults()
 	world_state = WorldState.defaults()
 	xp = 0
 	skills = {}
@@ -68,13 +72,14 @@ func fresh() -> void:
 	changed.emit()
 
 func snapshot(position: Vector2, current_vitals: Dictionary = {}) -> Dictionary:
-	return {"version": Store.VERSION, "world_state": world_state.duplicate(true), "region": region, "position": [position.x, position.y], "difficulty": difficulty,
+	return {"version": Store.VERSION, "nature": nature.duplicate(true), "world_state": world_state.duplicate(true), "region": region, "position": [position.x, position.y], "difficulty": difficulty,
 		"vitals": (vitals if current_vitals.is_empty() else current_vitals).duplicate(),
 		"gear_owned": gear_owned.duplicate(), "equipped": equipped.duplicate(), "opened": opened.duplicate(),
 		"xp": xp, "skills": skills.duplicate(),
 		"quest": quest, "aid_quest": aid_quest, "defeated": defeated.duplicate(), "inventory": inventory.duplicate(), "gathered": gathered.duplicate()}
 
 func apply(data: Dictionary) -> void:
+	nature = data.nature.duplicate(true)
 	world_state = data.world_state.duplicate(true)
 	gear_owned = data.gear_owned.duplicate()
 	equipped = data.equipped.duplicate()
@@ -210,6 +215,7 @@ func learn_skill(id: String) -> bool:
 	return true
 
 func advance_aid(event: String, mana: float) -> Dictionary:
+	if event == "magic" and not Nature.can_spell(nature, "heal"): return {}
 	var result := Quests.aid_transition(aid_quest, inventory, mana, event)
 	if result.is_empty():
 		return {}
@@ -268,14 +274,16 @@ func claim_chest(chest: Dictionary, position: Vector2, current_vitals: Dictionar
 	return true
 
 func advance_world(seconds: float) -> void:
-	if running:
+	if running and is_finite(seconds) and seconds >= 0:
 		world_state.minutes = Clock.advance(world_state.minutes, seconds)
+		nature = Nature.advance(nature, seconds)
 
 func wait_minutes(amount: float, position: Vector2) -> bool:
 	if not is_finite(amount) or amount <= 0 or amount > 1440:
 		return false
 	var data := snapshot(position, FULL_VITALS)
 	data.world_state.minutes = Clock.advance(world_state.minutes, amount)
+	data.nature = Nature.advance(nature, amount)
 	if Store.write_game(data) != OK:
 		notice.emit("SAVE_FAILED")
 		return false
@@ -380,4 +388,34 @@ func finish_guardian(position: Vector2, current_vitals: Dictionary) -> bool:
 		return false
 	apply(data)
 	notice.emit("TRIAL_VICTORY")
+	return true
+
+func nature_event(event: String, position: Vector2, current_vitals: Dictionary) -> bool:
+	var result := Nature.resolve(nature, gathered, opened, inventory, float(current_vitals.mana), event)
+	if result.is_empty(): return false
+	var data := snapshot(position, current_vitals)
+	data.nature = result.nature
+	data.gathered = result.gathered
+	data.inventory = result.inventory
+	data.vitals.mana = result.mana
+	data.world_state.reputation = Factions.change(world_state.reputation, result.trust)
+	data.xp = mini(100000, xp + int(result.xp))
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("NATURE_UPDATED")
+	return true
+
+func dialogue_event(kind: String, answer: String, position: Vector2, current_vitals: Dictionary) -> bool:
+	var result := Dialogue.resolve(nature, gathered, world_state.reputation, kind, answer)
+	if result.is_empty(): return false
+	var data := snapshot(position, current_vitals)
+	data.gathered = result.gathered
+	data.world_state.reputation = result.reputation
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("DIALOGUE_SAVED")
 	return true

@@ -1,11 +1,13 @@
 extends RefCounted
+const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
+const Nature = preload("res://scripts/nature/nature_rules.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
 
 const WorldState = preload("res://scripts/world/living/world_state.gd")
 const Gear = preload("res://scripts/items/equipment_rules.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
-const VERSION := 6
+const VERSION := 7
 const DEFAULT_PATH := "user://save.json"
 
 static func migrate(data: Variant) -> Dictionary:
@@ -45,15 +47,20 @@ static func migrate(data: Variant) -> Dictionary:
 			return {}
 		if world.reputation.size() != 1 or not WorldState.number(world.reputation.get("roadfolk"), -10, 10, true):
 			return {}
-		upgraded["version"] = VERSION
+		upgraded["version"] = 6
 		world.reputation["wardens"] = 0
 		world.reputation["tenders"] = 0
 		world["commission"] = WorldState.Commission.defaults()
+	if upgraded.get("version") == 6:
+		if upgraded.has("nature"): return {}
+		upgraded["version"] = VERSION
+		upgraded["nature"] = Nature.defaults()
 	return upgraded
 
 static func validate(data: Variant) -> bool:
 	if not data is Dictionary or data.get("version") != VERSION:
 		return false
+	if not Nature.valid(data.get("nature")): return false
 	if not WorldState.valid(data.get("world_state")):
 		return false
 	if not Gear.valid(data.get("gear_owned"), data.get("equipped")) or not data.get("opened") is Array:
@@ -105,6 +112,8 @@ static func validate(data: Variant) -> bool:
 			return false
 		if data.inventory[key] < 0 or data.inventory[key] > 999 or floorf(data.inventory[key]) != data.inventory[key]:
 			return false
+	if not Dialogue.valid(data.gathered): return false
+	if not Nature.quest_valid(data.nature, data.gathered, data.opened): return false
 	if not Trial.valid(data.gathered, data.defeated, data.opened, int(data.world_state.commission.stage)):
 		return false
 	if int(data.quest) == 2 and data.inventory.get("lantern", 0) != 1:

@@ -21,12 +21,12 @@ func run() -> void:
 	var session := root.get_node("Session")
 	var before: float = session.world_state.minutes
 	for i in 6:
-		await physics_frame
+		await process_frame
 	check(session.world_state.minutes > before, "active gameplay advances actual world clock")
 	game.show_pause()
 	before = session.world_state.minutes
 	for i in 6:
-		await physics_frame
+		await process_frame
 	check(session.world_state.minutes == before, "menu pauses clock and schedules")
 	game.resume()
 	game.world.player.position = Vector2(600, 550)

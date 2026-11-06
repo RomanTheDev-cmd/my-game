@@ -1,0 +1,12 @@
+{
+  "status": "first voluntary path episode; further forms and lycanthropy pending",
+  "entry_requirement": "waterworks_report",
+  "rules": "scripts/nature/nature_rules.gd",
+  "principles": [
+    "human start",
+    "two explanations before informed confirmation",
+    "human oath is a lasting alternative",
+    "blood from combat or voluntary supply, no essential NPC harm",
+    "separate return procedure with history and permanent gift loss"
+  ]
+}

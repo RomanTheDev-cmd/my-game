@@ -139,7 +139,7 @@ func _process(delta: float) -> void:
 		voice.volume_db = linear_to_db(maxf(0.0001, ambience_levels[id])) - 16
 
 func _notice(key: String) -> void:
-	if key in ["HERB_FOUND", "LANTERN_FOUND", "CHEST_OPENED", "TRADE_DONE", "POTION_CRAFTED", "LEVEL_UP", "ENCOUNTER_SAVED", "SALVAGE_FOUND", "COMMISSION_UPDATED", "TRIAL_UPDATED", "TRIAL_VICTORY"]:
+	if key in ["HERB_FOUND", "LANTERN_FOUND", "CHEST_OPENED", "TRADE_DONE", "POTION_CRAFTED", "LEVEL_UP", "ENCOUNTER_SAVED", "SALVAGE_FOUND", "COMMISSION_UPDATED", "TRIAL_UPDATED", "TRIAL_VICTORY", "NATURE_UPDATED", "DIALOGUE_SAVED"]:
 		play_ui("collect")
 	elif key == "RESTED":
 		play_ui("heal")

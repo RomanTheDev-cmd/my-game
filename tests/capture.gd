@@ -1,10 +1,12 @@
 extends SceneTree
+const NatureFixture = preload("res://tests/support/nature_fixture.gd")
 const TestExit = preload("res://tests/support/test_exit.gd")
 
 func _initialize() -> void:
 	call_deferred("capture")
 
 func capture() -> void:
+	var nature_screen = load("res://scripts/ui/nature_screen.gd")
 	var game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
 	await process_frame
@@ -227,5 +229,63 @@ func capture() -> void:
 	for i in 20: await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/boss_retry_record.png")
+	NatureFixture.completed_episode(session_for_skills)
+	session_for_skills.gathered.append_array(["nature:water", "nature:garden"])
+	session_for_skills.nature.stage = 2
+	session_for_skills.region = "lake"
+	session_for_skills.arrival = Vector2(480, 620)
+	game._build_world()
+	game.resume()
+	nature_screen.show_page(game, "wayfarer", "vampire")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/nature_consent.png")
+	NatureFixture.vampire(session_for_skills)
+	session_for_skills.region = "waterworks"
+	session_for_skills.arrival = Vector2(1200, 650)
+	game._build_world()
+	game.resume()
+	game.world.player.shift_form()
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/nature_form.png")
+	game.show_nature()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/nature_status.png")
+	game.screen.find_child("nature_shift", true, false).grab_focus()
+	for i in 5: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/nature_status_focus.png")
+	game.world.player.shift_form()
+	session_for_skills.region = "crossing"
+	session_for_skills.arrival = Vector2(520, 490)
+	game._build_world()
+	game.resume()
+	game.world.player.position = game.world.npcs.keeper.position
+	game.world.interact()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/dialogue_vampire.png")
+	game.screen.find_child("dialogue_honest", true, false).pressed.emit()
+	session_for_skills.nature = {"kind": "human", "form": "human", "blood": 100.0, "stage": 4, "history": ["vampire"], "cure": 3, "gift": "scar"}
+	session_for_skills.gathered.append_array(["nature:release_water", "nature:release_garden"])
+	game.world.player._update_nature_visuals()
+	game.update_hud()
+	game.show_dialog("keeper")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/dialogue_returned.png")
+	NatureFixture.completed_episode(session_for_skills)
+	session_for_skills.gathered.append_array(["nature:water", "nature:garden"])
+	session_for_skills.nature.stage = 3
+	session_for_skills.nature.gift = "oath"
+	game._build_world()
+	game.resume()
+	game.world.player.position = game.world.npcs.keeper.position
+	game.world.interact()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/dialogue_oath.png")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)

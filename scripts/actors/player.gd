@@ -1,4 +1,7 @@
 extends CharacterBody2D
+const Nature = preload("res://scripts/nature/nature_rules.gd")
+const Regions = preload("res://scripts/world/region_catalog.gd")
+const Clock = preload("res://scripts/world/living/world_clock.gd")
 const Gear = preload("res://scripts/items/equipment_rules.gd")
 const GearVisual = preload("res://scripts/items/gear_visual.gd")
 const Magic = preload("res://scripts/magic/magic_rules.gd")
@@ -19,6 +22,7 @@ var blocking := false
 var dodge_direction := Vector2.ZERO
 var sprite: Sprite2D
 var gear_visual: Node2D
+var nature_cooldown := 0.0
 var magic_cooldown := 0.0
 var aim_with_mouse := false
 var step_distance := 0.0
@@ -53,6 +57,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if health <= 0:
 		return
+	nature_cooldown = maxf(0, nature_cooldown - delta)
 	magic_cooldown = maxf(0, magic_cooldown - delta)
 	shield_recharge = maxf(0, shield_recharge - delta)
 	shield_time = maxf(0, shield_time - delta)
@@ -69,7 +74,7 @@ func _physics_process(delta: float) -> void:
 		if get_global_mouse_position().distance_to(global_position) > 3 and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			facing = (get_global_mouse_position() - global_position).normalized()
 		attack_time = 0.18
-		attack_cooldown = Gear.weapon(Session.equipped).cooldown
+		attack_cooldown = weapon_stats().cooldown
 		Sound.play_at("swing", global_position)
 		strike.emit(global_position, facing)
 	if Input.is_action_just_pressed("dodge") and stamina >= 28 and dodge_time == 0:
@@ -77,8 +82,8 @@ func _physics_process(delta: float) -> void:
 		dodge_time = 0.23
 		dodge_direction = facing
 		Sound.play_at("dodge", global_position)
-	blocking = Input.is_action_pressed("block") and stamina > 0 and dodge_time == 0
-	velocity = dodge_direction * 310 if dodge_time > 0 else direction * (55 if blocking else 115)
+	blocking = Input.is_action_pressed("block") and stamina > 0 and dodge_time == 0 and Session.nature.form == "human"
+	velocity = dodge_direction * 310 if dodge_time > 0 else direction * (55 if blocking else (145 if Session.nature.form == "battle" else 115))
 	var previous_position := global_position
 	move_and_slide()
 	if dodge_time == 0 and direction.length() > 0.15:
@@ -89,7 +94,12 @@ func _physics_process(delta: float) -> void:
 	else:
 		step_distance = 0
 	stamina = minf(100, stamina + delta * (10 if blocking else 24))
-	mana = minf(100, mana + delta * 2)
+	var exposed := Nature.sunlight(Session.nature, Clock.daylight(Session.world_state.minutes), Regions.get_region(Session.region).get("indoor", false)) > 1
+	mana = minf(100, mana + delta * (0.8 if exposed else 2.0))
+	if Session.nature.kind == "vampire" and Session.nature.blood > 20 and Clock.daylight(Session.world_state.minutes) < 0.5:
+		health = minf(100, health + delta * 1.5)
+	if Input.is_action_just_pressed("nature_power"): use_nature_power()
+	if Input.is_action_just_pressed("shift_form"): shift_form()
 	if Input.is_action_just_pressed("heal"):
 		cast_magic("heal")
 	if Input.is_action_just_pressed("cast"):
@@ -100,6 +110,7 @@ func _physics_process(delta: float) -> void:
 		cast_magic("aegis")
 	if Input.is_action_just_pressed("use_potion"):
 		drink_potion()
+	_update_nature_visuals()
 	gear_visual.scale.x = -1 if facing.x < 0 else 1
 	gear_visual.queue_redraw()
 	sprite.flip_h = facing.x < 0
@@ -112,14 +123,16 @@ func receive_damage(amount: float) -> void:
 	if health <= 0 or hurt_time > 0:
 		return
 	var reduced := amount * (1.0 - 0.1 * int(Session.skills.get("ward", 0))) * (1.0 - Gear.reduction(Session.equipped))
-	var hit := Rules.damage(reduced, Session.difficulty, blocking, dodge_time > 0, Gear.block(Session.equipped))
+	reduced *= Nature.sunlight(Session.nature, Clock.daylight(Session.world_state.minutes), Regions.get_region(Session.region).get("indoor", false))
+	var guarded: bool = blocking and Session.nature.form == "human"
+	var hit := Rules.damage(reduced, Session.difficulty, guarded, dodge_time > 0, Gear.block(Session.equipped))
 	if hit <= 0:
 		return
 	var absorbed := minf(hit, shield_strength) if shield_time > 0 else 0.0
 	shield_strength = maxf(0, shield_strength - absorbed)
 	hit -= absorbed
-	Sound.play_at("block" if blocking or absorbed > 0 else "impact", global_position)
-	if blocking:
+	Sound.play_at("block" if guarded or absorbed > 0 else "impact", global_position)
+	if guarded:
 		stamina = maxf(0, stamina - 23)
 	health = maxf(0, health - hit)
 	hurt_time = 0.45
@@ -129,6 +142,7 @@ func receive_damage(amount: float) -> void:
 		died.emit()
 
 func restore() -> void:
+	nature_cooldown = 0
 	magic_cooldown = 0
 	shield_strength = 0
 	shield_time = 0
@@ -142,18 +156,28 @@ func restore() -> void:
 	stats_changed.emit()
 
 func _draw() -> void:
+	if Session.nature.form == "battle":
+		draw_rect(Rect2(-11, -25, 22, 25), Color("433844"))
+		draw_rect(Rect2(-8, -40, 16, 15), Color("c5c5bb"))
+		draw_rect(Rect2(-6, -35, 4, 3), Color("b36665"))
+		for x in [-17, 12]:
+			draw_rect(Rect2(x, -21, 5, 19), Color("a7ada5"))
+			for i in 3: draw_rect(Rect2(x + i * 2, -1, 1, 5), Color("e5dfca"))
 	if shield_time > 0 and shield_strength > 0:
 		draw_arc(Vector2(0, -8), 22, 0, TAU, 32, Color(0.65, 0.85, 0.92, minf(0.8, shield_time)), 2)
 	if attack_time > 0:
 		var angle := facing.angle()
-		draw_arc(Vector2(0, -8), Gear.weapon(Session.equipped).reach * 0.72, angle - 0.95, angle + 0.95, 12, Color(0.94, 0.85, 0.63, attack_time / 0.18), 3)
+		draw_arc(Vector2(0, -8), weapon_stats().reach * 0.72, angle - 0.95, angle + 0.95, 12, Color(0.94, 0.85, 0.63, attack_time / 0.18), 3)
 	if blocking:
 		draw_arc(Vector2(0, -6), 17, facing.angle() - 0.9, facing.angle() + 0.9, 8, Color("c9b989"), 3)
 
 func can_cast_magic(id: String) -> bool:
-	return dodge_time == 0 and not (id == "aegis" and shield_recharge > 0) and not Magic.cast(id, health, mana, magic_cooldown).is_empty()
+	return Nature.can_spell(Session.nature, id) and dodge_time == 0 and not (id == "aegis" and shield_recharge > 0) and not Magic.cast(id, health, mana, magic_cooldown).is_empty()
 
 func cast_magic(id: String) -> bool:
+	if not Nature.can_spell(Session.nature, id):
+		Session.notice.emit("NATURE_SPELL_BLOCKED")
+		return false
 	if dodge_time > 0:
 		return false
 	if id == "aegis" and shield_recharge > 0:
@@ -203,3 +227,52 @@ func _input(event: InputEvent) -> void:
 		aim_with_mouse = true
 	elif event is InputEventJoypadMotion and absf(event.axis_value) > 0.25:
 		aim_with_mouse = false
+
+func weapon_stats() -> Dictionary:
+	return {"damage": 46.0, "reach": 58.0, "cooldown": 0.5} if Session.nature.form == "battle" else Gear.weapon(Session.equipped)
+
+func can_nature_power() -> bool:
+	if health <= 0 or dodge_time > 0 or nature_cooldown > 0 or Session.nature.form != "human": return false
+	if Session.nature.gift in ["oath", "scar"]: return mana >= 32
+	return Session.nature.kind == "vampire" and mana >= 16 and Session.nature.blood >= 12
+
+func use_nature_power() -> bool:
+	if not can_nature_power():
+		Session.notice.emit("NATURE_POWER_UNAVAILABLE")
+		return false
+	if Session.nature.kind == "vampire":
+		mana -= 16
+		Session.nature.blood -= 12
+		var direction := facing
+		if aim_with_mouse and global_position.distance_to(get_global_mouse_position()) > 3:
+			direction = global_position.direction_to(get_global_mouse_position())
+		cast_spell.emit(global_position + direction * 12, direction, 24.0, "blood")
+		nature_cooldown = 1.0
+		Sound.play_at("magic", global_position)
+	else:
+		mana -= 32
+		shield_strength = 45 if Session.nature.gift == "oath" else 40
+		shield_time = 8
+		nature_cooldown = 12
+		Sound.play_at("block", global_position)
+	stats_changed.emit()
+	return true
+
+func shift_form() -> bool:
+	if health <= 0 or (dodge_time > 0 and Session.nature.form != "battle"): return false
+	var next := Nature.shift(Session.nature)
+	if next.is_empty():
+		Session.notice.emit("NATURE_FORM_UNAVAILABLE")
+		return false
+	Session.nature = next
+	_update_nature_visuals()
+	dodge_time = 0
+	blocking = false
+	Session.changed.emit()
+	return true
+
+func _update_nature_visuals() -> void:
+	gear_visual.visible = Session.nature.form == "human"
+	sprite.visible = Session.nature.form == "human"
+	sprite.modulate = Color("bcc7d1") if Session.nature.kind == "vampire" else Color.WHITE
+	queue_redraw()

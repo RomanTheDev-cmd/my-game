@@ -18,12 +18,14 @@ func run() -> void:
 	session.fresh()
 	var state: Dictionary = session.snapshot(Vector2(410, 490))
 	state.version = 5
+	state.erase("nature")
 	state["world_state"] = {"minutes": 1445.0, "seed": 43119, "npcs": {}, "reputation": {"roadfolk": 0}, "seen": [], "next_event": 1500.0, "active": {}}
 	check(Store.write_game(state, "user://world-time-test.json") == OK, "world time can be saved with game state")
 	var loaded := Store.load_game("user://world-time-test.json")
 	check(loaded.get("world_state", {}).get("minutes") == 1445, "elapsed time survives reload")
 	var legacy: Dictionary = session.snapshot(Vector2(410, 490), {"health": 73.0, "stamina": 60.0, "mana": 40.0})
 	legacy.version = 4
+	legacy.erase("nature")
 	legacy.erase("world_state")
 	legacy.inventory = {"coin": 17, "potion": 2}
 	legacy.defeated = ["road_1"]
@@ -31,7 +33,7 @@ func run() -> void:
 	legacy.skills = {"sword": 1}
 	legacy.opened = ["crossing_cache"]
 	var upgraded := Store.migrate(legacy)
-	check(Store.validate(upgraded) and upgraded.version == 6 and upgraded.world_state.minutes == 1020, "v4 gains valid initial clock without resetting the hero")
+	check(Store.validate(upgraded) and upgraded.version == 7 and upgraded.world_state.minutes == 1020, "v4 gains valid initial clock without resetting the hero")
 	check(upgraded.inventory == legacy.inventory and upgraded.skills == legacy.skills and upgraded.xp == 60, "clock migration preserves money, supplies and training without retroactive rewards")
 	check(upgraded.vitals.health == 73 and upgraded.defeated == legacy.defeated and upgraded.opened == legacy.opened and upgraded.equipped == legacy.equipped, "clock migration retains wounds, world memory and equipment")
 	check(legacy.version == 4 and not legacy.has("world_state"), "clock migration leaves original data untouched")

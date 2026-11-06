@@ -39,6 +39,8 @@ static func show_dialog(ui: Node, target: String) -> void:
 		var shop: Button = ui._button("WARDEN_TRADE", EquipmentScreen.shop.bind(ui), content)
 		shop.name = "warden_shop"
 		shop.disabled = not Factions.trusted(Session.world_state.reputation, "wardens")
+	if target == "tender" and (Session.nature.stage in [1, 2] or Session.nature.cure in [1, 2]):
+		ui._button("NATURE_TITLE", ui.show_nature.bind("tender"), content).name = "nature_garden"
 	if target == "tender":
 		var cost := Items.TENDER_HERBS
 		var help: Label = ui._label(content, "TENDER_BREW_HELP", 14)
