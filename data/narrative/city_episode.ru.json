@@ -1,0 +1,24 @@
+{
+  "status": "city_history playable mediation",
+  "rules": "scripts/quests/city_rules.gd",
+  "source_sequences": [
+    "regional_hub",
+    "city_history"
+  ],
+  "characters": {
+    "crafter": "Эрдвин хочет снова иметь соседей, не наследственных должников; помогает сам.",
+    "archivist": "Ровена хранит имена и согласие, а не вечный долг; не повторяет раннее предложение превращения."
+  },
+  "principles": [
+    "regional order free after accepted commitment",
+    "two reversible drafts and two actual independent consents",
+    "revision clears signatures while retaining practical aid",
+    "shared accepts supply/memory; release requires actual work/public copy",
+    "ordinary work and copy reachable for all histories",
+    "consented own-blood confirmation, no forced transformation",
+    "actual mastered hybrid can hold the press",
+    "atomic time/resources and one final outcome",
+    "visible record and different NPC destinations",
+    "no mandatory casualty"
+  ]
+}

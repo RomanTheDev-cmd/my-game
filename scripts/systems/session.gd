@@ -1,4 +1,5 @@
 extends Node
+const City = preload("res://scripts/quests/city_rules.gd")
 const Forest = preload("res://scripts/quests/forest_rules.gd")
 const Campaign = preload("res://scripts/quests/campaign_rules.gd")
 const Field = preload("res://scripts/magic/field_rules.gd")
@@ -526,3 +527,21 @@ func forest_event(event: String, position: Vector2, current_vitals: Dictionary) 
 	apply(data)
 	notice.emit("FOREST_SAVED")
 	return true
+
+func city_event(event: String, position: Vector2, current_vitals: Dictionary) -> Dictionary:
+	var result := City.resolve(nature, gathered, opened, inventory, current_vitals, world_state.minutes, event)
+	if result.is_empty(): return {}
+	var data := snapshot(position, result.vitals)
+	data.nature = result.nature
+	data.gathered = result.gathered
+	data.opened = result.opened
+	data.inventory = result.inventory
+	data.world_state.minutes = result.minutes
+	data.xp = mini(100000, xp + result.xp)
+	data.world_state.reputation = Factions.change(world_state.reputation, result.trust)
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return {}
+	apply(data)
+	notice.emit("CITY_SAVED")
+	return result

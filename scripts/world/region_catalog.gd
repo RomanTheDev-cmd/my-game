@@ -19,7 +19,7 @@ const REGIONS := {
 	"workshop": {
 		"location": "LOCATION_WORKSHOP", "description": "REGION_WORKSHOP", "camp": Vector2(380, 730),
 		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1800, 1160), "exit_label": "TO_LAKE",
-		"extra_exits": [{"point": Vector2(1800, 420), "destination": "waterworks", "arrival": Vector2(240, 650), "label": "TO_WATERWORKS", "direction": 1},
+		"extra_exits": [{"point": Vector2(850, 200), "destination": "velshof", "arrival": Vector2(240, 650), "label": "TO_CITY", "direction": 1}, {"point": Vector2(1800, 420), "destination": "waterworks", "arrival": Vector2(240, 650), "label": "TO_WATERWORKS", "direction": 1},
 			{"point": Vector2(1780, 1200), "destination": "thicket", "arrival": Vector2(240, 650), "label": "TO_THICKET", "direction": 1}],
 		"warden": Vector2(360, 540), "wright": Vector2(570, 540), "tender": Vector2(520, 870), "mentor": Vector2(780, 700),
 		"herbs": [Vector2(580, 850), Vector2(780, 1080)],
@@ -63,6 +63,14 @@ const REGIONS := {
 		"enemies": [["woodroad_guard", Vector2(1750, 1060), "heavy"]],
 		"forest_sites": [Vector2(700, 620), Vector2(1020, 780), Vector2(1380, 620)],
 		"chests": [{"id": "woodroad_cache", "point": Vector2(1640, 650), "requires_opened": ["forest_passage"], "items": {"herb": 2, "potion": 1}}]
+	},
+	"velshof": {
+		"location": "LOCATION_CITY", "description": "REGION_CITY", "camp": Vector2(350, 840), "crafter": Vector2(500, 620), "archivist": Vector2(1170, 520),
+		"exit": Vector2(135, 650), "destination": "workshop", "arrival": Vector2(810, 220), "exit_label": "TO_WORKSHOP",
+		"herbs": [Vector2(700, 870), Vector2(1450, 800)],
+		"enemies": [["velshof_backstreet", Vector2(1750, 1020)], ["velshof_archer", Vector2(1720, 170), "ranged"]],
+		"city_sites": {"board": Vector2(850, 700), "press": Vector2(600, 780), "archive": Vector2(1210, 700)},
+		"chests": [{"id": "courtyard_supplies", "point": Vector2(980, 780), "requires_opened": ["city_report"], "items": {"herb": 2, "potion": 1}}]
 	},
 	"waterworks": {
 		"indoor": true, "location": "LOCATION_WATERWORKS", "description": "REGION_WATERWORKS", "camp": Vector2(300, 800),

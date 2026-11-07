@@ -31,6 +31,9 @@ static func show_page(ui: Node, target: String = "mentor", confirm: String = "")
 	text(ui, contents, dialog_key, 18)
 	text(ui, contents, "STORY_HINT_%d" % stage, 16)
 	if target == "mentor" and "story:accepted" in Session.gathered:
+		text(ui, contents, "CITY_MENTOR_DONE" if "city_report" in Session.opened else "CITY_MENTOR_NEXT", 16)
+		if ["story_lake_report", "forest_report", "city_report"].all(func(flag): return flag in Session.opened): text(ui, contents, "CITY_MENTOR_ALL", 16)
+	if target == "mentor" and "story:accepted" in Session.gathered:
 		text(ui, contents, "FOREST_MENTOR_DONE" if "forest_report" in Session.opened else "FOREST_MENTOR_NEXT", 16)
 		if "forest_report" in Session.opened:
 			text(ui, contents, "FOREST_MENTOR_COMMONS" if "forest:outcome:commons" in Session.gathered else "FOREST_MENTOR_WATCH", 16)

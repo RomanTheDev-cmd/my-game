@@ -20,7 +20,7 @@ func _ready() -> void:
 	sprite.texture = preload("res://assets/sprites/keeper.png") if kind == "keeper" else preload("res://assets/sprites/wayfarer.png")
 	sprite.position.y = -12
 	add_child(sprite)
-	sprite.modulate = {"warden": Color("99b6c5"), "wright": Color("d7bb8b"), "tender": Color("a5c9a5"), "tracker": Color("adc49f"), "host": Color("bcbfa5"), "roadkeeper": Color("a9b78a"), "mentor": Color("bea786"), "witness": Color("b7c8bb")}.get(kind, Color.WHITE)
+	sprite.modulate = {"warden": Color("99b6c5"), "wright": Color("d7bb8b"), "tender": Color("a5c9a5"), "tracker": Color("adc49f"), "host": Color("bcbfa5"), "crafter": Color("c6b98c"), "archivist": Color("b3b8cc"), "roadkeeper": Color("a9b78a"), "mentor": Color("bea786"), "witness": Color("b7c8bb")}.get(kind, Color.WHITE)
 
 func set_destination(point: Vector2) -> void:
 	if point.distance_to(destination) > 1:
@@ -46,6 +46,12 @@ func _physics_process(delta: float) -> void:
 		sprite.flip_h = velocity.x < 0
 
 func _draw() -> void:
+	if kind == "crafter":
+		draw_rect(Rect2(-9, -16, 18, 15), Color("88795f"))
+		draw_line(Vector2(10, -22), Vector2(10, -2), Color("c5bca0"), 3)
+	if kind == "archivist":
+		draw_rect(Rect2(-13, -16, 8, 13), Color("d4cbb2"))
+		draw_line(Vector2(-12, -12), Vector2(-6, -12), Color("66715f"), 2)
 	if kind == "roadkeeper":
 		draw_line(Vector2(11, -30), Vector2(11, 2), Color("aa9b76"), 3)
 		draw_rect(Rect2(-13, -21, 26, 5), Color("687b5a"))

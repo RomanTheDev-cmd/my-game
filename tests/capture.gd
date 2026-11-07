@@ -677,6 +677,76 @@ func capture() -> void:
 	game.screen.find_child("dialogue_continue", true, false).pressed.emit()
 	game.screen.find_child("forest_aid_blood", true, false).pressed.emit()
 	await shot("forest_blood_review")
+	var city_fixture = load("res://tests/support/city_fixture.gd")
+	city_fixture.ready(session_for_skills)
+	session_for_skills.region = "velshof"
+	session_for_skills.arrival = Vector2(850, 650)
+	game._build_world()
+	game.resume()
+	for i in 3: await process_frame
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	for npc in game.world.npcs.values(): npc.set_physics_process(false)
+	await shot("city_courtyard", game.get_viewport().get_camera_2d())
+	game.show_map()
+	await shot("city_map")
+	game.resume()
+	game.world.player.position = game.world.npcs.crafter.position
+	game.world.interact()
+	await shot("city_offer")
+	game.world.city_action("accept")
+	game.world.city_action("hear_crafter")
+	game.resume()
+	game.world.player.position = game.world.npcs.archivist.position
+	game.world.interact()
+	await shot("city_archivist")
+	game.world.city_action("hear_archivist")
+	game.resume()
+	game.world.player.position = game.world.definition.city_sites.board
+	game.world.interact()
+	await shot("city_draft")
+	game.world.city_action("draft_shared")
+	game.resume()
+	game.world.player.position = game.world.npcs.crafter.position
+	game.world.interact()
+	await shot("city_counteroffer")
+	game.resume()
+	game.world.player.position = game.world.definition.city_sites.press
+	game.world.interact()
+	await shot("city_work")
+	game.world.city_action("work")
+	game.resume()
+	game.world.player.position = game.world.definition.city_sites.archive
+	game.world.interact()
+	game.world.city_action("copy")
+	for role in ["crafter", "archivist"]:
+		game.resume()
+		game.world.player.position = game.world.npcs[role].position
+		game.world.city_action("sign_" + role)
+	game.resume()
+	game.world.player.position = game.world.definition.city_sites.board
+	game.world.interact()
+	await shot("city_signed")
+	game.screen.find_child("city_draft_release", true, false).pressed.emit()
+	await shot("city_revision_review")
+	game.world.city_action("draft_release")
+	game.resume()
+	await shot("city_revised_board", game.get_viewport().get_camera_2d())
+	for role in ["crafter", "archivist"]:
+		game.world.player.position = game.world.npcs[role].position
+		game.world.city_action("sign_" + role)
+	game.world.player.position = game.world.definition.city_sites.board
+	game.world.interact()
+	game.screen.find_child("city_seal", true, false).pressed.emit()
+	await shot("city_seal_review")
+	if not game.world.city_action("seal"):
+		printerr("CAPTURE_CITY_SEAL_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	game.resume()
+	await shot("city_final_board", game.get_viewport().get_camera_2d())
+	game.world.interact()
+	await shot("city_outcome")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)
 func shot(file: String, camera: Camera2D = null) -> void:

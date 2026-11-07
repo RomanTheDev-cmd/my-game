@@ -6,6 +6,7 @@ const PackScreen = preload("res://scripts/ui/pack_screen.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const NatureScreen = preload("res://scripts/ui/nature_screen.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
+const CityScreen = preload("res://scripts/ui/city_screen.gd")
 const ForestScreen = preload("res://scripts/ui/forest_screen.gd")
 const CampaignScreen = preload("res://scripts/ui/campaign_screen.gd")
 const FieldScreen = preload("res://scripts/ui/field_screen.gd")
@@ -301,6 +302,7 @@ func show_journal() -> void:
 	if Session.aid_quest > 0:
 		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	CityScreen.journal(self, contents)
 	ForestScreen.journal(self, contents)
 	CampaignScreen.journal(self, contents)
 	FieldScreen.journal(self, contents)
@@ -327,10 +329,13 @@ func show_journal() -> void:
 	_button("BACK", resume).grab_focus()
 
 func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void:
-	var role := kind.trim_prefix("commission:").trim_prefix("reaction:").trim_prefix("community:").trim_prefix("story:").trim_prefix("forest:")
+	var role := kind.trim_prefix("commission:").trim_prefix("reaction:").trim_prefix("community:").trim_prefix("story:").trim_prefix("forest:").trim_prefix("city:")
 	if kind == "merchant_closed": role = "merchant"
 	if not bypass_reaction and DialogueRules.GROUPS.has(role) and DialogueRules.context(Session.nature) != "":
 		DialogueScreen.show_page(self, role, kind if not kind.begins_with("reaction:") else "")
+		return
+	if kind in ["crafter", "archivist"] or kind.begins_with("city:"):
+		CityScreen.show_page(self, kind.trim_prefix("city:"))
 		return
 	if kind == "roadkeeper" or kind.begins_with("forest:"):
 		ForestScreen.show_page(self, kind.trim_prefix("forest:"))
@@ -523,6 +528,8 @@ func update_hud() -> void:
 	if story_stage in [1, 2, 3, 4]: quest_label.text = tr("STORY_HUD_%d" % story_stage)
 	var forest_stage := ForestScreen.Rules.stage(Session.gathered, Session.opened)
 	if forest_stage in [1, 2]: quest_label.text = tr("FOREST_HUD_%d" % forest_stage) % (ForestScreen.Rules.progress(Session.gathered) + 1) if forest_stage == 1 else tr("FOREST_HUD_2")
+	var city_stage := CityScreen.Rules.stage(Session.gathered, Session.opened)
+	if city_stage in [1, 2]: quest_label.text = tr("CITY_HUD_%d" % city_stage)
 	if is_instance_valid(world.boss) and world.boss.awaiting_record:
 		quest_label.text = tr("TRIAL_RECORD_HELP")
 	var near: String = world.nearby_key()

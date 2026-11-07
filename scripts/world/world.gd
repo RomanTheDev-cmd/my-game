@@ -1,4 +1,7 @@
 extends Node2D
+const City = preload("res://scripts/quests/city_rules.gd")
+const CityLandscape = preload("res://scripts/world/city_landscape.gd")
+const CityBoard = preload("res://scripts/world/city_board.gd")
 const Forest = preload("res://scripts/quests/forest_rules.gd")
 const Woodroad = preload("res://scripts/world/woodroad_landscape.gd")
 const ForestSign = preload("res://scripts/world/forest_sign.gd")
@@ -41,6 +44,7 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var city_objects: Dictionary = {}
 var forest_signs: Array[Node2D] = []
 var campaign_devices: Dictionary = {}
 var field_devices: Dictionary = {}
@@ -73,11 +77,17 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
+	landscape = CityLandscape.new() if Session.region == "velshof" else Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
 	_build_commission_objects()
+	for id in definition.get("city_sites", {}):
+		var object := CityBoard.new()
+		object.kind = id
+		object.position = definition.city_sites[id]
+		add_child(object)
+		city_objects[id] = object
 	for point in definition.get("forest_sites", []):
 		var sign := ForestSign.new()
 		sign.position = point
@@ -189,6 +199,8 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_city_environment)
+	_update_city_environment()
 	Session.changed.connect(_update_forest_environment)
 	_update_forest_environment()
 	Session.changed.connect(_update_campaign_environment)
@@ -261,9 +273,11 @@ func nearby_key() -> String:
 		return "KEEPER_NAME"
 	if wayfarer.visible and player.position.distance_to(wayfarer.position) < 45:
 		return "AID_NAME"
-	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper"]:
+	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper", "crafter", "archivist"]:
 		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
 			return kind.to_upper() + "_NAME"
+	for id in city_objects:
+		if player.position.distance_to(city_objects[id].position) < 45: return "CITY_SITE_" + id.to_upper()
 	for i in forest_signs.size():
 		if player.position.distance_to(forest_signs[i].position) < 45: return "FOREST_SITE_%d" % i
 	for id in campaign_devices:
@@ -301,6 +315,11 @@ func interact() -> void:
 	_update_tracking()
 	_sync_context()
 	var key := nearby_key()
+	if key in ["CRAFTER_NAME", "ARCHIVIST_NAME"] or key.begins_with("CITY_SITE_"):
+		var target := key.trim_suffix("_NAME").to_lower() if key.ends_with("_NAME") else key.trim_prefix("CITY_SITE_").to_lower()
+		if key.ends_with("_NAME") and Session.nature.form != "human": dialog_requested.emit("reaction:" + target)
+		else: dialog_requested.emit("city:" + target)
+		return
 	if key == "ROADKEEPER_NAME" or key.begins_with("FOREST_SITE_"):
 		if key == "ROADKEEPER_NAME" and Session.nature.form != "human": dialog_requested.emit("reaction:roadkeeper")
 		else: dialog_requested.emit("forest:roadkeeper" if key == "ROADKEEPER_NAME" else "forest:" + key.trim_prefix("FOREST_SITE_"))
@@ -483,6 +502,9 @@ func _spawn_npc(kind: String) -> CharacterBody2D:
 func _update_npcs() -> void:
 	for npc in npcs.values():
 		if is_instance_valid(npc) and npc.visible:
+			if Session.region == "velshof" and npc.kind in ["crafter", "archivist"] and "city:outcome:shared" in Session.gathered:
+				npc.set_destination(Vector2(780, 680) if npc.kind == "crafter" else Vector2(930, 680))
+				continue
 			if npc.kind == "roadkeeper" and Forest.stage(Session.gathered, Session.opened) > 0:
 				_update_escort(npc)
 				continue
@@ -856,3 +878,27 @@ func _update_forest_environment() -> void:
 		forest_signs[i].outcome = "commons" if Forest.OUTCOMES[0] in Session.gathered else ("watch" if Forest.OUTCOMES[1] in Session.gathered else "")
 		forest_signs[i].queue_redraw()
 	landscape.queue_redraw()
+
+func can_city(event: String) -> bool:
+	if Session.region != "velshof" or not City.SITES.has(event) or player.health <= 0 or player.dodge_time > 0 or not safe_to_rest(): return false
+	var target: String = City.SITES[event]
+	var point: Vector2 = npcs[target].position if npcs.has(target) and npcs[target].visible else definition.get("city_sites", {}).get(target, Vector2.INF)
+	return player.position.distance_to(point) < 48 and navigation.segment_clear(player.position, point) and not City.resolve(Session.nature, Session.gathered, Session.opened, Session.inventory, player_vitals(), Session.world_state.minutes, event).is_empty()
+func city_action(event: String) -> bool:
+	if not can_city(event): return false
+	_sync_context()
+	var result := Session.city_event(event, player.position, player_vitals())
+	if result.is_empty(): return false
+	player.mana = Session.vitals.mana
+	player.stamina = Session.vitals.stamina
+	player.advance_timers(result.elapsed)
+	player.stats_changed.emit()
+	Sound.play_at("collect", player.position)
+	return true
+func _update_city_environment() -> void:
+	for object in city_objects.values():
+		object.plan = City.draft(Session.gathered)
+		object.signatures = Session.gathered.filter(func(flag): return flag in City.SIGNATURES).size()
+		object.completed = City.REPORT in Session.opened
+		object.worked = Session.gathered.any(func(flag): return flag in City.WORK)
+		object.queue_redraw()
