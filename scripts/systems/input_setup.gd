@@ -7,7 +7,7 @@ static func install() -> void:
 		"attack": [KEY_J], "dodge": [KEY_SPACE], "block": [KEY_K],
 		"frost": [KEY_G], "aegis": [KEY_R], "spellbook": [KEY_B], "cast": [KEY_F], "use_potion": [KEY_H], "heal": [KEY_Q], "interact": [KEY_E], "pause_game": [KEY_ESCAPE],
 		"wait": [KEY_T], "equipment": [KEY_I], "skills": [KEY_C], "map": [KEY_M], "journal": [KEY_TAB], "save_game": [KEY_F5], "load_game": [KEY_F9],
-		"hybrid_form": [KEY_Y], "nature_power": [KEY_V], "shift_form": [KEY_U], "nature_book": [KEY_N], "fullscreen": [KEY_F11]
+		"bat_form": [KEY_Z], "mist_form": [KEY_X], "hybrid_form": [KEY_Y], "nature_power": [KEY_V], "shift_form": [KEY_U], "nature_book": [KEY_N], "fullscreen": [KEY_F11]
 	}
 	for action in bindings:
 		if InputMap.has_action(action):

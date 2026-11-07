@@ -3,6 +3,8 @@ const Factions = preload("res://scripts/factions/faction_rules.gd")
 const GROUPS := {"keeper": "roadfolk", "merchant": "roadfolk", "wayfarer": "roadfolk", "wright": "roadfolk", "warden": "wardens", "tender": "tenders", "tracker": "tenders"}
 const ANSWERS := {"vampire": ["honest", "distance"], "returned": ["explain", "silence"], "oath": ["pledge", "listen"], "werewolf": ["pack_word", "reserve"], "wild_returned": ["remember_pack", "leave_silence"]}
 static func context(nature: Dictionary) -> String:
+	if nature.form == "bat": return "bat_form"
+	if nature.form == "mist": return "mist_form"
 	if nature.form != "human": return "wild_form" if nature.kind == "werewolf" else "form"
 	if nature.kind == "werewolf": return "werewolf"
 	if "werewolf" in nature.history: return "wild_returned"

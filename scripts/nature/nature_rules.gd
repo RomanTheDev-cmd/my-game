@@ -1,16 +1,21 @@
 extends RefCounted
+const Regions = preload("res://scripts/world/region_catalog.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const Pack = preload("res://scripts/nature/pack_rules.gd")
 const STUDIES := ["nature:water", "nature:garden"]
 const RELEASE := ["nature:release_water", "nature:release_garden"]
 const SITES := {"invite": ["lake", "wayfarer"], "water": ["waterworks", "altar"], "garden": ["workshop", "tender"],
 	"human": ["lake", "wayfarer"], "vampire": ["lake", "wayfarer"], "supply": ["lake", "wayfarer"],
-	"cure_start": ["crossing", "keeper"], "release_water": ["waterworks", "altar"], "release_garden": ["workshop", "tender"], "cure_finish": ["crossing", "keeper"]}
+	"cure_start": ["crossing", "keeper"], "release_water": ["waterworks", "altar"], "release_garden": ["workshop", "tender"], "cure_finish": ["crossing", "keeper"], "learn_bat": ["lake", "wayfarer"], "learn_mist": ["lake", "wayfarer"]}
 static func defaults() -> Dictionary:
-	return {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 0, "history": [], "cure": 0, "gift": ""}
+	return {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 0, "history": [], "cure": 0, "gift": "", "landing": {}}
 static func valid(data: Variant) -> bool:
-	if not data is Dictionary or data.size() != 8: return false
-	if data.get("kind") not in ["human", "vampire", "werewolf"] or data.get("form") not in ["human", "battle", "wolf", "hybrid"]: return false
+	if not data is Dictionary or data.size() != 9: return false
+	if data.get("kind") not in ["human", "vampire", "werewolf"] or data.get("form") not in ["human", "battle", "wolf", "hybrid", "bat", "mist"]: return false
+	if not data.get("landing") is Dictionary: return false
+	if not data.landing.is_empty() and (data.kind != "vampire" or not landing_valid(data.landing)): return false
+	if data.form in ["bat", "mist"] and not landing_valid(data.landing): return false
+	if data.form not in ["bat", "mist", "human"] and not data.landing.is_empty(): return false
 	var blood = data.get("blood")
 	if not (blood is int or blood is float) or not is_finite(float(blood)) or blood < 0 or blood > 100: return false
 	var resolve = data.get("resolve")
@@ -23,7 +28,7 @@ static func valid(data: Variant) -> bool:
 	if data.stage < 3:
 		return data.kind == "human" and data.form == "human" and blood == 100 and data.history.is_empty() and data.cure == 0 and data.get("gift") == ""
 	if data.kind == "vampire":
-		return data.stage == 3 and data.history == ["vampire"] and data.cure < 3 and data.get("gift") == "blood" and data.form in ["human", "battle"] and (data.form == "human" or blood > 0)
+		return data.stage == 3 and data.history == ["vampire"] and data.cure < 3 and data.get("gift") in ["blood", "blood_bat", "blood_mist"] and data.form in ["human", "battle", "bat", "mist"] and (data.form != "bat" or data.gift in ["blood_bat", "blood_mist"]) and (data.form != "mist" or data.gift == "blood_mist") and (data.form == "human" or blood > 0)
 	if data.kind == "werewolf":
 		return data.stage == 3 and blood == 100 and data.history == ["werewolf"] and data.cure < 3 and data.get("gift") in ["wild", "wild_master"] and data.form in ["human", "wolf", "hybrid"] and (data.form == "human" or resolve > 0) and (data.form != "hybrid" or data.gift == "wild_master")
 	if data.form != "human" or blood != 100: return false
@@ -31,6 +36,8 @@ static func valid(data: Variant) -> bool:
 static func quest_valid(data: Dictionary, gathered: Array, opened: Array) -> bool:
 	if not Pack.valid(data, gathered, opened): return false
 	if "werewolf" in data.history or data.gift == "trail_oath": return true
+	if data.kind == "vampire" and data.gift in ["blood_bat", "blood_mist"] and "flight:bat" not in gathered: return false
+	if data.kind == "vampire" and data.gift == "blood_mist" and ("flight:mist" not in gathered or "waterworks_flight" not in opened): return false
 	if data.stage > 0 and "waterworks_report" not in opened: return false
 	for flag in STUDIES + RELEASE:
 		if gathered.count(flag) > 1: return false
@@ -74,7 +81,7 @@ static func advance(data: Dictionary, seconds: float) -> Dictionary:
 	if not valid(data) or not is_finite(seconds) or seconds < 0: return {}
 	var next := data.duplicate(true)
 	if data.kind == "vampire":
-		next.blood = maxf(0, data.blood - seconds * (3.04 if data.form == "battle" else 0.04))
+		next.blood = maxf(0, data.blood - seconds * {"battle": 3.04, "bat": 1.5, "mist": 4.0}.get(data.form, 0.04))
 		if next.blood == 0: next.form = "human"
 	if data.kind == "werewolf":
 		if data.form == "human": next.resolve = minf(100, data.resolve + seconds * 0.8)
@@ -90,7 +97,7 @@ static func sunlight(data: Dictionary, daylight: float, indoor: bool) -> float:
 	return 1.3 if data.kind == "vampire" and not indoor and daylight > 0.5 else 1.0
 static func can_spell(data: Dictionary, id: String) -> bool:
 	return data.form == "human" and not (data.kind == "vampire" and id in ["light", "heal"])
-static func shift(data: Dictionary, requested: String = "") -> Dictionary:
+static func shift(data: Dictionary, requested: String = "", landing: Dictionary = {}) -> Dictionary:
 	if not valid(data) or data.kind == "human": return {}
 	var next := data.duplicate(true)
 	if requested == "" and data.form != "human":
@@ -101,8 +108,16 @@ static func shift(data: Dictionary, requested: String = "") -> Dictionary:
 		next.form = "human"
 		return next
 	if data.kind == "vampire":
-		if selected != "battle" or data.blood < 25: return {}
-		next.blood -= 20
+		if selected not in ["battle", "bat", "mist"]: return {}
+		if selected == "battle" and data.form in ["bat", "mist"]: return {}
+		if selected == "bat" and data.gift not in ["blood_bat", "blood_mist"]: return {}
+		if selected == "mist" and data.gift != "blood_mist": return {}
+		var cost := 20 if selected == "battle" else 12
+		if data.blood < cost + 5: return {}
+		if selected in ["bat", "mist"]:
+			if not landing_valid(landing): return {}
+			next.landing = landing.duplicate(true)
+		next.blood -= cost
 	else:
 		if selected not in ["wolf", "hybrid"] or (selected == "hybrid" and data.gift != "wild_master"): return {}
 		var cost := 10 if selected == "wolf" else 20
@@ -128,6 +143,14 @@ static func resolve(data: Dictionary, gathered: Array, opened: Array, inventory:
 			if data.kind != "vampire" or data.cure != 1 or flag in flags: return {}
 			flags.append(flag)
 			if RELEASE[0] in flags and RELEASE[1] in flags: next = transition(data, "cure_prepare", true)
+		"learn_bat", "learn_mist":
+			if data.kind != "vampire" or mana < 20: return {}
+			if event == "learn_bat" and data.gift != "blood": return {}
+			if event == "learn_mist" and (data.gift != "blood_bat" or "waterworks_flight" not in opened): return {}
+			next.gift = "blood_bat" if event == "learn_bat" else "blood_mist"
+			flags.append("flight:bat" if event == "learn_bat" else "flight:mist")
+			mana -= 20
+			xp = 20
 		"supply":
 			if data.kind != "vampire" or data.blood >= 80 or int(items.get("coin", 0)) < 6: return {}
 			items.coin -= 6
@@ -153,3 +176,9 @@ static func regeneration(data: Dictionary, minutes: float) -> float:
 	if data.kind == "werewolf" and data.form != "human" and data.resolve > 20:
 		return 0.5 + (Pack.moon(minutes) * 0.8 if night else 0.0)
 	return 0.0
+
+static func landing_valid(data: Dictionary) -> bool:
+	if not data.get("region") is String or not Regions.valid(data.region) or not data.get("position") is Array or data.position.size() != 2: return false
+	for value in data.position:
+		if not (value is float or value is int) or not is_finite(float(value)): return false
+	return data.position[0] >= 8 and data.position[0] <= 1912 and data.position[1] >= 8 and data.position[1] <= 1272

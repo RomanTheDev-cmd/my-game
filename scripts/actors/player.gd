@@ -22,6 +22,8 @@ var dodge_time := 0.0
 var hurt_time := 0.0
 var blocking := false
 var dodge_direction := Vector2.ZERO
+var verify_arrival := true
+var body_collider: CollisionShape2D
 var sprite: Sprite2D
 var gear_visual: Node2D
 var scent_time := 0.0
@@ -35,12 +37,14 @@ var shield_recharge := 0.0
 
 func _ready() -> void:
 	collision_layer = 2
-	collision_mask = 1
+	collision_mask = 17
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
 	circle.radius = 8
 	shape.shape = circle
 	add_child(shape)
+	body_collider = shape
+	_set_form_shape()
 	sprite = Sprite2D.new()
 	sprite.texture = preload("res://assets/sprites/traveler.png")
 	sprite.position.y = -12
@@ -61,6 +65,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if health <= 0:
 		return
+	sync_form_geometry()
 	scent_time = maxf(0, scent_time - delta)
 	nature_cooldown = maxf(0, nature_cooldown - delta)
 	magic_cooldown = maxf(0, magic_cooldown - delta)
@@ -75,7 +80,7 @@ func _physics_process(delta: float) -> void:
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if direction.length() > 0.15:
 		facing = direction.normalized()
-	if Input.is_action_just_pressed("attack") and attack_cooldown == 0 and dodge_time == 0:
+	if Input.is_action_just_pressed("attack") and attack_cooldown == 0 and dodge_time == 0 and Session.nature.form not in ["bat", "mist"]:
 		if get_global_mouse_position().distance_to(global_position) > 3 and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			facing = (get_global_mouse_position() - global_position).normalized()
 		attack_time = 0.18
@@ -105,6 +110,8 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("nature_power"): use_nature_power()
 	if Input.is_action_just_pressed("shift_form"): shift_form()
 	if Input.is_action_just_pressed("hybrid_form"): shift_form("hybrid")
+	if Input.is_action_just_pressed("bat_form"): shift_form("bat")
+	if Input.is_action_just_pressed("mist_form"): shift_form("mist")
 	if Input.is_action_just_pressed("heal"):
 		cast_magic("heal")
 	if Input.is_action_just_pressed("cast"):
@@ -129,6 +136,7 @@ func receive_damage(amount: float) -> void:
 		return
 	var armor: float = 0.0 if Session.nature.kind == "werewolf" and Session.nature.form != "human" else Gear.reduction(Session.equipped)
 	var reduced := amount * (1.0 - 0.1 * int(Session.skills.get("ward", 0))) * (1.0 - armor)
+	if Session.nature.form == "mist": reduced *= 0.25
 	reduced *= Nature.sunlight(Session.nature, Clock.daylight(Session.world_state.minutes), Regions.get_region(Session.region).get("indoor", false))
 	var guarded: bool = blocking and Session.nature.form == "human"
 	var hit := Rules.damage(reduced, Session.difficulty, guarded, dodge_time > 0, Gear.block(Session.equipped))
@@ -163,6 +171,11 @@ func restore() -> void:
 	stats_changed.emit()
 
 func _draw() -> void:
+	if Session.nature.form == "bat":
+		draw_colored_polygon(PackedVector2Array([Vector2(-23, -13), Vector2(-10, -18), Vector2(0, -6), Vector2(10, -18), Vector2(23, -13), Vector2(11, -3), Vector2(0, -2), Vector2(-11, -3)]), Color("616876"))
+		draw_rect(Rect2(-4, -14, 8, 14), Color("9eaaa9"))
+	if Session.nature.form == "mist":
+		for i in 5: draw_circle(Vector2(-18 + i * 8, -7 - i % 2 * 5), 10, Color(0.63, 0.76, 0.8, 0.35))
 	if Session.nature.form == "wolf":
 		var sign_value := -1 if facing.x < 0 else 1
 		draw_rect(Rect2(-15, -15, 30, 15), Color("73776c"))
@@ -252,6 +265,7 @@ func _input(event: InputEvent) -> void:
 
 func weapon_stats() -> Dictionary:
 	match Session.nature.form:
+		"bat", "mist": return {"damage": 0.0, "reach": 0.0, "cooldown": 1.0}
 		"wolf": return {"damage": 22.0, "reach": 40.0, "cooldown": 0.42}
 		"hybrid":
 			var bonus := 1.0 + (Pack.moon(Session.world_state.minutes) * 0.15 if Clock.daylight(Session.world_state.minutes) < 0.5 else 0.0)
@@ -259,7 +273,7 @@ func weapon_stats() -> Dictionary:
 		"battle": return {"damage": 46.0, "reach": 58.0, "cooldown": 0.5}
 	return Gear.weapon(Session.equipped)
 func movement_speed() -> float:
-	return {"wolf": 175.0, "hybrid": 125.0, "battle": 145.0}.get(Session.nature.form, 115.0)
+	return {"bat": 190.0, "mist": 135.0, "wolf": 175.0, "hybrid": 125.0, "battle": 145.0}.get(Session.nature.form, 115.0)
 func can_track() -> bool:
 	return (Session.nature.kind == "werewolf" and Session.nature.form == "wolf") or scent_time > 0
 
@@ -304,11 +318,12 @@ func use_nature_power() -> bool:
 
 func shift_form(requested: String = "") -> bool:
 	if health <= 0 or (dodge_time > 0 and Session.nature.form == "human"): return false
-	var next := Nature.shift(Session.nature, requested)
+	var next := Nature.shift(Session.nature, requested, landing_context())
 	if next.is_empty():
 		Session.notice.emit("PACK_FORM_UNAVAILABLE" if Session.nature.kind == "werewolf" else "NATURE_FORM_UNAVAILABLE")
 		return false
 	Session.nature = next
+	sync_form_geometry()
 	_update_nature_visuals()
 	dodge_time = 0
 	blocking = false
@@ -320,3 +335,42 @@ func _update_nature_visuals() -> void:
 	sprite.visible = Session.nature.form == "human"
 	sprite.modulate = Color("bcc7d1") if Session.nature.kind == "vampire" else Color.WHITE
 	queue_redraw()
+
+func _human_space_clear(point: Vector2) -> bool:
+	var query := PhysicsShapeQueryParameters2D.new()
+	var shape := CircleShape2D.new()
+	shape.radius = 8
+	query.shape = shape
+	query.transform = Transform2D(0, point)
+	query.collision_mask = 17
+	query.exclude = [get_rid()]
+	query.collide_with_areas = false
+	return get_world_2d().direct_space_state.intersect_shape(query, 1).is_empty()
+func _landing_safe(point: Vector2) -> bool:
+	return _human_space_clear(point) and (not get_parent().has_method("landing_safe") or get_parent().landing_safe(point))
+func landing_context() -> Dictionary:
+	if is_inside_tree() and _landing_safe(global_position):
+		return {"region": Session.region, "position": [global_position.x, global_position.y]}
+	return Session.nature.landing.duplicate(true)
+func can_shift_form(requested: String) -> bool:
+	return not Nature.shift(Session.nature, requested, landing_context()).is_empty()
+func _set_form_shape() -> void:
+	if body_collider == null: return
+	var radius := 2.0 if Session.nature.form == "mist" else (6.0 if Session.nature.form == "bat" else 8.0)
+	if (body_collider.shape as CircleShape2D).radius != radius: (body_collider.shape as CircleShape2D).radius = radius
+	collision_mask = 1 if Session.nature.form == "bat" else 17
+func sync_form_geometry() -> void:
+	if verify_arrival:
+		verify_arrival = false
+		# Old saves may predate the new walls or closed chambers.
+		if Session.nature.form not in ["bat", "mist"] and not _landing_safe(global_position):
+			global_position = Regions.get_region(Session.region).camp
+	if Session.nature.form in ["bat", "mist"]:
+		if _landing_safe(global_position): Session.nature.landing = {"region": Session.region, "position": [global_position.x, global_position.y]}
+	elif not Session.nature.landing.is_empty():
+		if not _landing_safe(global_position):
+			var saved: Array = Session.nature.landing.position
+			var anchor := Vector2(saved[0], saved[1])
+			global_position = anchor if _landing_safe(anchor) else Regions.get_region(Session.region).camp
+		Session.nature.landing = {}
+	_set_form_shape()

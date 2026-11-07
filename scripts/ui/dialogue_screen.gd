@@ -34,7 +34,7 @@ static func show_page(ui: Node, kind: String, original: String = "") -> void:
 		var button: Button = ui._button(label, _answer.bind(ui, kind, answer, original), contents)
 		button.name = "dialogue_" + answer
 		button.disabled = not ui.world.can_dialogue(kind, answer)
-	if current in ["form", "wild_form"]:
+	if current in ["form", "wild_form", "bat_form", "mist_form"]:
 		var return_button: Button = ui._button("NATURE_SHIFT", _return_form.bind(ui, kind, original), contents)
 		return_button.name = "dialogue_return_form"
 	else:

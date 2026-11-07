@@ -19,7 +19,7 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 		return
 	var destination := global_position + direction * speed * delta
-	var query := PhysicsRayQueryParameters2D.create(global_position, destination, 1 | 4)
+	var query := PhysicsRayQueryParameters2D.create(global_position, destination, 1 | 4 | 16)
 	query.hit_from_inside = true
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():

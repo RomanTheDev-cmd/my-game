@@ -11,7 +11,7 @@ func check(value: bool, message: String) -> void:
 		printerr("FAIL: ", message)
 func _initialize() -> void: call_deferred("run")
 func run() -> void:
-	var wolf := {"kind": "werewolf", "form": "human", "blood": 100.0, "resolve": 80.0, "stage": 3, "history": ["werewolf"], "cure": 0, "gift": "wild"}
+	var wolf := {"kind": "werewolf", "form": "human", "blood": 100.0, "landing": {}, "resolve": 80.0, "stage": 3, "history": ["werewolf"], "cure": 0, "gift": "wild"}
 	check(Nature.valid(wolf), "independent lycanthropy has a coherent persistent state")
 	var shifted := Nature.shift(wolf)
 	check(shifted.get("form") == "wolf" and shifted.get("resolve") == 70, "wolf shape pays its own resource without touching blood")

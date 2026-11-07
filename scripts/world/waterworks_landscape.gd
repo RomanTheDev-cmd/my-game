@@ -4,6 +4,11 @@ const WALLS := [Rect2(-30, -30, 1980, 30), Rect2(-30, 1280, 1980, 30), Rect2(-30
 	Rect2(420, 480, 230, 50), Rect2(420, 800, 180, 50), Rect2(1000, 350, 60, 140), Rect2(1460, 840, 70, 110), Rect2(1130, 980, 110, 70)]
 func _ready() -> void:
 	for rect in WALLS: _obstacle(rect)
+	for rect in [Rect2(1540, 250, 180, 20), Rect2(1540, 250, 20, 140), Rect2(1700, 250, 20, 140), Rect2(780, 930, 230, 20), Rect2(990, 930, 20, 170), Rect2(780, 1080, 230, 20)]: _obstacle(rect)
+	if "waterworks_flight" not in Session.opened: _gate(Rect2(1560, 380, 140, 16), 16, "waterworks_flight")
+	if "waterworks_mist" not in Session.opened:
+		_gate(Rect2(780, 930, 20, 78), 1, "waterworks_mist")
+		_gate(Rect2(780, 1014, 20, 86), 1, "waterworks_mist")
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, 1920, 1280), Color("192e34"))
 	draw_rect(Rect2(150, 250, 1620, 910), Color("626c69"))
@@ -28,3 +33,21 @@ func _draw() -> void:
 		var point := Vector2(1350, 650) + Vector2.from_angle(i * TAU / 12) * 210
 		draw_line(point, point + Vector2.from_angle(i * TAU / 12) * 15, Color("bec0a1"), 3)
 	_camp(Vector2(300, 800))
+	for rect in [Rect2(1540, 250, 180, 20), Rect2(1540, 250, 20, 140), Rect2(1700, 250, 20, 140), Rect2(780, 930, 230, 20), Rect2(990, 930, 20, 170), Rect2(780, 1080, 230, 20)]: draw_rect(rect, Color("88918a"))
+	if "waterworks_flight" not in Session.opened:
+		for x in range(1560, 1700, 10): draw_rect(Rect2(x, 380, 4, 16), Color("adb6a6"))
+	if "waterworks_mist" not in Session.opened:
+		draw_rect(Rect2(780, 930, 20, 78), Color("88918a"))
+		draw_rect(Rect2(780, 1014, 20, 86), Color("88918a"))
+
+func _gate(rect: Rect2, layer: int, id: String) -> void:
+	var body := StaticBody2D.new()
+	body.position = rect.get_center()
+	body.collision_layer = layer
+	body.set_meta("flight_gate", id)
+	var collider := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size = rect.size
+	collider.shape = shape
+	body.add_child(collider)
+	get_parent().add_child(body)

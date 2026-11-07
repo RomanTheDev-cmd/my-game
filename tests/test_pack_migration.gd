@@ -18,9 +18,10 @@ func run() -> void:
 	var old: Dictionary = session.snapshot(Vector2(520, 490), {"health": 64.0, "stamina": 52.0, "mana": 31.0})
 	old.version = 7
 	old.nature.erase("resolve")
+	old.nature.erase("landing")
 	var original := old.duplicate(true)
 	var upgraded: Dictionary = session.Store.migrate(old)
-	check(upgraded.get("version") == 8 and upgraded.get("nature", {}).get("resolve") == 100, "v7 gains independent shape stamina through explicit migration")
+	check(upgraded.get("version") == 9 and upgraded.get("nature", {}).get("resolve") == 100, "v7 gains independent shape stamina through explicit migration")
 	check(upgraded.nature.kind == "vampire" and upgraded.nature.form == "battle" and upgraded.nature.blood == 31.5, "migration preserves old vampire nature shape and hunger")
 	check(upgraded.world_state == old.world_state and upgraded.gathered == old.gathered and upgraded.vitals.health == 64 and old == original, "migration retains full world conversation memory wounds and immutable source")
 	check(session.Store.validate(upgraded) and session.Store.write_game(old, "user://v7-pack.json") == OK, "legacy profile migrates and writes to actual disk")

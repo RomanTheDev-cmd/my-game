@@ -144,18 +144,21 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_flight_gates)
 	Session.changed.connect(_update_pack_environment)
 	Session.changed.connect(_update_trial_environment)
 	Session.changed.connect(_update_commission_environment)
 	_update_commission_environment()
 	_update_trial_environment()
 	_update_pack_environment()
+	_update_flight_gates()
 
 func _process(delta: float) -> void:
 	time += delta
 	_update_tracking()
 	if Session.running and player.health > 0:
 		Session.advance_world(delta)
+		player.sync_form_geometry()
 	_update_npcs()
 	_sync_context()
 	event_timer -= delta
@@ -307,6 +310,7 @@ func interact() -> void:
 					break
 
 func _on_strike(origin: Vector2, direction: Vector2) -> void:
+	if Session.nature.form in ["bat", "mist"]: return
 	for child in get_children():
 		if child is Enemy:
 			var offset: Vector2 = child.global_position - origin
@@ -616,3 +620,18 @@ func _on_howl(origin: Vector2) -> void:
 	for child in get_children():
 		if child is Enemy and child.health > 0 and child.position.distance_to(origin) < 150 and navigation.segment_clear(origin, child.position): child.apply_slow(3, 0.55)
 	_update_tracking()
+
+func landing_safe(point: Vector2) -> bool:
+	for zone in definition.get("landing_zones", []):
+		if zone.rect.grow(10).has_point(point) and zone.opens not in Session.opened: return false
+	return true
+func _update_flight_gates() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	var changed := false
+	for body in get_children():
+		if body is StaticBody2D and body.has_meta("flight_gate") and body.get_meta("flight_gate") in Session.opened:
+			remove_child(body)
+			body.queue_free()
+			changed = true
+	if changed: navigation.configure(self)
+	landscape.queue_redraw()

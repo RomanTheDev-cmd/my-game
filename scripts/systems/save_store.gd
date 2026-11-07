@@ -7,7 +7,7 @@ const WorldState = preload("res://scripts/world/living/world_state.gd")
 const Gear = preload("res://scripts/items/equipment_rules.gd")
 const Skills = preload("res://scripts/progression/skill_rules.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
-const VERSION := 8
+const VERSION := 9
 const DEFAULT_PATH := "user://save.json"
 
 static func migrate(data: Variant) -> Dictionary:
@@ -56,11 +56,20 @@ static func migrate(data: Variant) -> Dictionary:
 		upgraded["version"] = 7
 		upgraded["nature"] = Nature.defaults()
 		upgraded.nature.erase("resolve")
+		upgraded.nature.erase("landing")
 	if upgraded.get("version") == 7:
 		var old_nature = upgraded.get("nature")
 		if not old_nature is Dictionary or old_nature.has("resolve") or old_nature.get("kind") not in ["human", "vampire"]: return {}
 		if old_nature.get("gift") not in ["", "oath", "blood", "scar"] or old_nature.get("form") not in ["human", "battle"] or old_nature.get("history") not in [[], ["vampire"]]: return {}
 		old_nature["resolve"] = 100.0
+		var check_nature: Dictionary = old_nature.duplicate(true)
+		check_nature["landing"] = {}
+		if not Nature.valid(check_nature): return {}
+		upgraded["version"] = 8
+	if upgraded.get("version") == 8:
+		var old_nature = upgraded.get("nature")
+		if not old_nature is Dictionary or old_nature.has("landing") or old_nature.get("form") in ["bat", "mist"] or old_nature.get("gift") in ["blood_bat", "blood_mist"]: return {}
+		old_nature["landing"] = {}
 		if not Nature.valid(old_nature): return {}
 		upgraded["version"] = VERSION
 	return upgraded
@@ -121,6 +130,7 @@ static func validate(data: Variant) -> bool:
 		if data.inventory[key] < 0 or data.inventory[key] > 999 or floorf(data.inventory[key]) != data.inventory[key]:
 			return false
 	if not Dialogue.valid(data.gathered): return false
+	if not data.nature.landing.is_empty() and data.nature.landing.region != data.region: return false
 	if not Nature.quest_valid(data.nature, data.gathered, data.opened): return false
 	if not Trial.valid(data.gathered, data.defeated, data.opened, int(data.world_state.commission.stage)):
 		return false

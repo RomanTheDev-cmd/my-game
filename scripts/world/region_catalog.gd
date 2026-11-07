@@ -42,7 +42,10 @@ const REGIONS := {
 		"exit": Vector2(135, 650), "destination": "workshop", "arrival": Vector2(1760, 420), "exit_label": "TO_WORKSHOP",
 		"herbs": [Vector2(450, 1000)], "enemies": [["waterworks_guardian", Vector2(1350, 650), "boss"]],
 		"trial_sites": {"north": Vector2(550, 390), "south": Vector2(690, 1000), "altar": Vector2(820, 650)},
-		"chests": [{"id": "waterworks_supplies", "point": Vector2(1660, 1020), "requires": ["waterworks_guardian"], "items": {"coin": 18, "potion": 2}}]
+		"landing_zones": [{"rect": Rect2(1540, 250, 180, 150), "opens": "waterworks_flight"}, {"rect": Rect2(780, 930, 230, 170), "opens": "waterworks_mist"}],
+		"chests": [{"id": "waterworks_flight", "point": Vector2(1640, 320), "required_form": "bat", "items": {"coin": 6}},
+			{"id": "waterworks_mist", "point": Vector2(940, 1011), "required_form": "mist", "items": {"coin": 8}},
+			{"id": "waterworks_supplies", "point": Vector2(1660, 1020), "requires": ["waterworks_guardian"], "items": {"coin": 18, "potion": 2}}]
 	},
 	"ruins": {
 		"indoor": true, "location": "LOCATION_RUINS", "description": "REGION_RUINS", "camp": Vector2(290, 870),

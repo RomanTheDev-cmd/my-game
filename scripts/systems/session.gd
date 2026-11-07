@@ -138,6 +138,9 @@ func travel(destination: String, position: Vector2, current_vitals: Dictionary =
 		return false
 	var data := snapshot(position, current_vitals)
 	data.region = destination
+	if data.nature.form in ["bat", "mist"] or not data.nature.landing.is_empty():
+		data.nature.form = "human"
+		data.nature.landing = {}
 	# Commit the destination only once its checkpoint is safely on disk.
 	if Store.write_game(data) != OK:
 		notice.emit("SAVE_FAILED")
@@ -259,6 +262,7 @@ func trade_item(id: String, selling: bool, position: Vector2, current_vitals: Di
 	return true
 
 func claim_chest(chest: Dictionary, position: Vector2, current_vitals: Dictionary) -> bool:
+	if chest.has("required_form") and nature.form != chest.required_form: return false
 	var result := Loot.claim(chest, inventory, gear_owned, opened, defeated)
 	if result.is_empty():
 		notice.emit("CHEST_UNAVAILABLE")

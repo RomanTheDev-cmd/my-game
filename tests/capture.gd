@@ -269,7 +269,7 @@ func capture() -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/dialogue_vampire.png")
 	game.screen.find_child("dialogue_honest", true, false).pressed.emit()
-	session_for_skills.nature = {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 4, "history": ["vampire"], "cure": 3, "gift": "scar"}
+	session_for_skills.nature = {"kind": "human", "form": "human", "blood": 100.0, "landing": {}, "resolve": 100.0, "stage": 4, "history": ["vampire"], "cure": 3, "gift": "scar"}
 	session_for_skills.gathered.append_array(["nature:release_water", "nature:release_garden"])
 	game.world.player._update_nature_visuals()
 	game.update_hud()
@@ -333,7 +333,7 @@ func capture() -> void:
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/dialogue_werewolf.png")
 	game.screen.find_child("dialogue_pack_word", true, false).pressed.emit()
-	session_for_skills.nature = {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 4, "history": ["werewolf"], "cure": 3, "gift": "wild_scar"}
+	session_for_skills.nature = {"kind": "human", "form": "human", "blood": 100.0, "landing": {}, "resolve": 100.0, "stage": 4, "history": ["werewolf"], "cure": 3, "gift": "wild_scar"}
 	session_for_skills.gathered.append_array(["pack:return_started", "pack:release_den", "pack:release_word", "pack:returned"])
 	game.world.player._update_nature_visuals()
 	game.update_hud()
@@ -341,5 +341,58 @@ func capture() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/dialogue_wild_returned.png")
+	NatureFixture.vampire(session_for_skills)
+	session_for_skills.region = "lake"
+	session_for_skills.arrival = Vector2(480, 620)
+	game._build_world()
+	game.resume()
+	game.world.player.position = game.world.npcs.wayfarer.position
+	game.show_nature("wayfarer")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/flight_training.png")
+	game.resume()
+	game.world.nature_action("learn_bat")
+	session_for_skills.region = "waterworks"
+	session_for_skills.arrival = Vector2(1640, 430)
+	game._build_world()
+	game.resume()
+	for i in 3: await physics_frame
+	game.world.player.shift_form("bat")
+	game.world.player.position = Vector2(1640, 345)
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/bat_chamber.png")
+	game.world.interact()
+	game.world.player.shift_form()
+	session_for_skills.nature.gift = "blood_mist"
+	session_for_skills.gathered.append("flight:mist")
+	session_for_skills.nature.blood = 100
+	session_for_skills.arrival = Vector2(740, 1011)
+	game._build_world()
+	game.resume()
+	for i in 3: await physics_frame
+	game.world.player.shift_form("mist")
+	game.world.player.position = Vector2(790, 1011)
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/mist_passage.png")
+	game.show_nature()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/flight_status.png")
+	game.resume()
+	game.world.player.shift_form()
+	session_for_skills.region = "lake"
+	session_for_skills.arrival = Vector2(480, 620)
+	game._build_world()
+	game.resume()
+	for i in 3: await physics_frame
+	game.world.player.position = game.world.npcs.wayfarer.position
+	game.world.player.shift_form("mist")
+	game.world.interact()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/dialogue_mist.png")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)

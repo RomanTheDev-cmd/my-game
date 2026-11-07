@@ -12,4 +12,4 @@ static func completed_episode(session: Node) -> void:
 static func vampire(session: Node) -> void:
 	completed_episode(session)
 	session.gathered.append_array(["nature:water", "nature:garden"])
-	session.nature = {"kind": "vampire", "form": "human", "blood": 80.0, "resolve": 100.0, "stage": 3, "history": ["vampire"], "cure": 0, "gift": "blood"}
+	session.nature = {"kind": "vampire", "form": "human", "blood": 80.0, "landing": {}, "resolve": 100.0, "stage": 3, "history": ["vampire"], "cure": 0, "gift": "blood"}

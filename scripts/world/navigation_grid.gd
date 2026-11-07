@@ -14,7 +14,7 @@ func configure(root: Node2D) -> void:
 	grid.update()
 	obstacles.clear()
 	for body in root.get_children():
-		if not body is StaticBody2D or body.collision_layer & 1 == 0:
+		if not body is StaticBody2D or body.collision_layer & 17 == 0:
 			continue
 		for collider in body.get_children():
 			if not collider is CollisionShape2D or collider.disabled:

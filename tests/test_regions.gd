@@ -12,7 +12,7 @@ func check(condition: bool, message: String) -> void:
 		printerr("FAIL: ", message)
 
 func _initialize() -> void:
-	var state := {"version": 8, "nature": {"kind": "human", "form": "human", "blood": 100.0, "resolve": 100.0, "stage": 0, "history": [], "cure": 0, "gift": ""}, "world_state": {"minutes": 1020.0, "seed": 43119, "npcs": {}, "commission": {"stage": 0, "survey": [], "heard": [], "supply": "", "settlement": ""}, "reputation": {"roadfolk": 0, "wardens": 0, "tenders": 0}, "seen": [], "next_event": 1050.0, "active": {}}, "gear_owned": ["road_sword", "cloth", "wood_shield"], "equipped": {"weapon": "road_sword", "armor": "cloth", "shield": "wood_shield"}, "opened": [], "aid_quest": 0, "xp": 0, "skills": {}, "region": "lake", "position": [250, 650], "difficulty": 1,
+	var state := {"version": 9, "nature": {"kind": "human", "form": "human", "blood": 100.0, "landing": {}, "resolve": 100.0, "stage": 0, "history": [], "cure": 0, "gift": ""}, "world_state": {"minutes": 1020.0, "seed": 43119, "npcs": {}, "commission": {"stage": 0, "survey": [], "heard": [], "supply": "", "settlement": ""}, "reputation": {"roadfolk": 0, "wardens": 0, "tenders": 0}, "seen": [], "next_event": 1050.0, "active": {}}, "gear_owned": ["road_sword", "cloth", "wood_shield"], "equipped": {"weapon": "road_sword", "armor": "cloth", "shield": "wood_shield"}, "opened": [], "aid_quest": 0, "xp": 0, "skills": {}, "region": "lake", "position": [250, 650], "difficulty": 1,
 		"vitals": {"health": 60, "stamina": 50, "mana": 45}, "quest": 0, "inventory": {"herb": 1}, "defeated": ["lake_1"], "gathered": ["lake:herb_600_650"]}
 	check(Store.write_game(state, PATH) == OK, "save accepts a known second region")
 	var restored := Store.load_game(PATH)
@@ -25,7 +25,7 @@ func _initialize() -> void:
 	file.store_string(JSON.stringify(legacy))
 	file.close()
 	var migrated := Store.load_game(PATH)
-	check(migrated.get("version") == 8 and migrated.get("region") == "crossing", "v1 save migrates into original region")
+	check(migrated.get("version") == 9 and migrated.get("region") == "crossing", "v1 save migrates into original region")
 	check(migrated.get("position", []).size() == 2 and Vector2(migrated.position[0], migrated.position[1]) == Vector2(410, 490), "migration retains player location")
 	check(migrated.get("vitals", {}).get("health") == 100, "legacy saves receive safe default vitals")
 	legacy.version = 99

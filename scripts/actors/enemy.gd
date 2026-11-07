@@ -30,7 +30,7 @@ var slow_multiplier := 1.0
 func _ready() -> void:
 	health = max_health
 	collision_layer = 4
-	collision_mask = 1
+	collision_mask = 17
 	home = global_position
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()

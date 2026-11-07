@@ -21,7 +21,7 @@ func run() -> void:
 	check(accepted.get("kind") == "vampire" and accepted.get("history") == ["vampire"], "explicit completed choice records nature and lasting history")
 	var pledge := Rules.transition(prepared, "human", true)
 	check(pledge.get("gift") == "oath" and pledge.get("kind") == "human", "declining transformation grants a distinct human specialization")
-	var vampire := {"kind": "vampire", "form": "human", "blood": 50.0, "resolve": 100.0, "stage": 3, "history": ["vampire"], "cure": 0, "gift": "blood"}
+	var vampire := {"kind": "vampire", "form": "human", "blood": 50.0, "landing": {}, "resolve": 100.0, "stage": 3, "history": ["vampire"], "cure": 0, "gift": "blood"}
 	check(Rules.valid(vampire), "coherent vampire state is valid")
 	var invalid := vampire.duplicate(true)
 	invalid.history = []

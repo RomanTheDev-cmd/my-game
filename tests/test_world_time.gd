@@ -33,7 +33,7 @@ func run() -> void:
 	legacy.skills = {"sword": 1}
 	legacy.opened = ["crossing_cache"]
 	var upgraded := Store.migrate(legacy)
-	check(Store.validate(upgraded) and upgraded.version == 8 and upgraded.world_state.minutes == 1020, "v4 gains valid initial clock without resetting the hero")
+	check(Store.validate(upgraded) and upgraded.version == 9 and upgraded.world_state.minutes == 1020, "v4 gains valid initial clock without resetting the hero")
 	check(upgraded.inventory == legacy.inventory and upgraded.skills == legacy.skills and upgraded.xp == 60, "clock migration preserves money, supplies and training without retroactive rewards")
 	check(upgraded.vitals.health == 73 and upgraded.defeated == legacy.defeated and upgraded.opened == legacy.opened and upgraded.equipped == legacy.equipped, "clock migration retains wounds, world memory and equipment")
 	check(legacy.version == 4 and not legacy.has("world_state"), "clock migration leaves original data untouched")

@@ -451,6 +451,8 @@ func update_hud() -> void:
 		return
 	human_label.text = "%s · %s %d" % [tr("NATURE_KIND_" + Session.nature.kind.to_upper()), tr("LEVEL"), Skills.level(Session.xp)]
 	nature_label.text = tr("NATURE_BLOOD") % Session.nature.blood + " · U / V / N" if Session.nature.kind == "vampire" else (tr("NATURE_KEYS") if Session.nature.gift != "" else "")
+	if Session.nature.kind == "vampire" and Session.nature.gift in ["blood_bat", "blood_mist"]:
+		nature_label.text += " · Z" + (" / X" if Session.nature.gift == "blood_mist" else "")
 	if Session.nature.kind == "werewolf": nature_label.text = tr("PACK_RESOLVE") % Session.nature.resolve + " · U/Y/V/N"
 	location_label.text = tr(world.definition.location)
 	var minutes: float = Session.world_state.minutes
