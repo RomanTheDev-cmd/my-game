@@ -1,4 +1,5 @@
 extends Node
+const Preparation = preload("res://scripts/quests/preparation_rules.gd")
 const Junction = preload("res://scripts/quests/junction_rules.gd")
 const City = preload("res://scripts/quests/city_rules.gd")
 const Forest = preload("res://scripts/quests/forest_rules.gd")
@@ -561,3 +562,18 @@ func junction_event(event: String, position: Vector2, current_vitals: Dictionary
 	apply(data)
 	notice.emit("JOINT_SAVED")
 	return result
+
+func preparation_event(event: String, position: Vector2, current_vitals: Dictionary, rehearsed: bool = false) -> bool:
+	var result := Preparation.resolve(nature, gathered, opened, inventory, current_vitals, event, rehearsed)
+	if result.is_empty(): return false
+	var data := snapshot(position, result.vitals)
+	data.gathered = result.gathered
+	data.opened = result.opened
+	data.xp = mini(100000, xp + result.xp)
+	data.world_state.reputation = Factions.change(world_state.reputation, result.trust)
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("PREP_SAVED")
+	return true

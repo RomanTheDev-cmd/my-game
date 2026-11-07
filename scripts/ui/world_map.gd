@@ -60,6 +60,11 @@ func _draw() -> void:
 			draw_circle(project(obstacle.center), 2, Color("233e35"))
 		elif (Regions.get_region(region).get("indoor", false) and obstacle.rect.position.x >= 80 and obstacle.rect.position.y >= 80 and obstacle.rect.end.x <= 1840 and obstacle.rect.end.y <= 1200) or (obstacle.rect.size.x < 250 and obstacle.rect.size.y < 250):
 			_box(obstacle.rect, Color("9a9d89"))
+	if region == "rotunda" and "prep:accepted" in Session.gathered:
+		var preparation = preload("res://scripts/quests/preparation_rules.gd")
+		for point in preparation.CONTROLS.values():
+			var mark := project(point)
+			draw_rect(Rect2(mark - Vector2(3, 3), Vector2(6, 6)), Color("cfbf8a"), false, 1)
 	var definition := Regions.get_region(region)
 	for point in Regions.camps(region, Session.opened):
 		var camp := project(point)

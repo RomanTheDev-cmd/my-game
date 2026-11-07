@@ -1,4 +1,6 @@
 extends Node2D
+const Preparation = preload("res://scripts/quests/preparation_rules.gd")
+const PreparationRoute = preload("res://scripts/world/preparation_route.gd")
 const Junction = preload("res://scripts/quests/junction_rules.gd")
 const Rotunda = preload("res://scripts/world/rotunda_landscape.gd")
 const JunctionConsole = preload("res://scripts/world/junction_console.gd")
@@ -47,6 +49,7 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var preparation_route: Node2D
 var junction_objects: Dictionary = {}
 var city_objects: Dictionary = {}
 var forest_signs: Array[Node2D] = []
@@ -85,6 +88,10 @@ func _ready() -> void:
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
+	if Session.region == "rotunda":
+		preparation_route = PreparationRoute.new()
+		preparation_route.world = self
+		add_child(preparation_route)
 	_build_commission_objects()
 	for id in definition.get("junction_sites", {}):
 		var object := JunctionConsole.new()
@@ -210,6 +217,8 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_preparation_environment)
+	_update_preparation_environment()
 	Session.changed.connect(_update_junction_environment)
 	_update_junction_environment()
 	Session.changed.connect(_update_city_environment)
@@ -286,6 +295,10 @@ func nearby_key() -> String:
 		return "KEEPER_NAME"
 	if wayfarer.visible and player.position.distance_to(wayfarer.position) < 45:
 		return "AID_NAME"
+	if is_instance_valid(preparation_route) and "prep:accepted" in Session.gathered:
+		if preparation_route.pending and player.position.distance_to(Preparation.CONTROLS.finish) < 45: return "PREP_SITE_RETRY"
+		for id in ["north", "south", "gate"]:
+			if player.position.distance_to(Preparation.CONTROLS[id]) < 45: return "PREP_SITE_" + id.to_upper()
 	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper", "crafter", "archivist", "steward"]:
 		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
 			return kind.to_upper() + "_NAME"
@@ -330,6 +343,17 @@ func interact() -> void:
 	_update_tracking()
 	_sync_context()
 	var key := nearby_key()
+	if key.begins_with("PREP_SITE_"):
+		var target := key.trim_prefix("PREP_SITE_").to_lower()
+		if target == "retry": preparation_route.activate()
+		elif target in ["north", "south"]:
+			if not preparation_action("tune_" + target): Session.notice.emit("PREP_LOCKED")
+		else: dialog_requested.emit("preparation:gate")
+		return
+	if "junction_report" in Session.opened and (key == "STEWARD_NAME" or ("prep:accepted" in Session.gathered and key in ["WITNESS_NAME", "CRAFTER_NAME", "MENTOR_NAME", "JOINT_SITE_TABLE"])):
+		var target := "table" if key == "JOINT_SITE_TABLE" else key.trim_suffix("_NAME").to_lower()
+		dialog_requested.emit("preparation:" + target)
+		return
 	if key == "STEWARD_NAME" or (key == "MENTOR_NAME" and (Session.region == "rotunda" or Junction.ready(Session.opened))) or key.begins_with("JOINT_SITE_"):
 		var target := key.trim_suffix("_NAME").to_lower() if key.ends_with("_NAME") else key.trim_prefix("JOINT_SITE_").to_lower()
 		if target == "console" and Junction.stage(Session.gathered, Session.opened) == 2 and Session.gathered.any(func(flag): return flag in Junction.METHODS):
@@ -523,6 +547,10 @@ func _spawn_npc(kind: String) -> CharacterBody2D:
 func _update_npcs() -> void:
 	for npc in npcs.values():
 		if is_instance_valid(npc) and npc.visible:
+			if Session.region == "rotunda" and npc.kind in ["witness", "crafter"]:
+				npc.walk_speed = 85
+				npc.set_destination(Preparation.post(Session.gathered, npc.kind))
+				continue
 			if Session.region == "velshof" and npc.kind in ["crafter", "archivist"] and "city:outcome:shared" in Session.gathered:
 				npc.set_destination(Vector2(780, 680) if npc.kind == "crafter" else Vector2(930, 680))
 				continue
@@ -963,3 +991,42 @@ func _update_junction_environment() -> void:
 		object.outcome = "public" if Junction.CHOICES[0] in Session.gathered else ("private" if Junction.CHOICES[1] in Session.gathered else "")
 		if object.kind == "console" and object.active and not object.proved and not can_measure(): object.cancel_measure()
 		object.queue_redraw()
+
+func can_rehearse() -> bool:
+	if Session.region != "rotunda" or not is_instance_valid(preparation_route) or not Session.running or player.health <= 0 or player.attack_time > 0 or player.dodge_time > 0 or Session.nature.form != "human" or not safe_to_rest(): return false
+	if "prep:accepted" not in Session.gathered or "prep:tested" in Session.gathered or not Preparation.configured(Session.gathered): return false
+	for role in ["witness", "crafter"]:
+		var npc: CharacterBody2D = npcs[role]
+		var point: Vector2 = Preparation.post(Session.gathered, role)
+		if not npc.visible or npc.position.distance_to(point) >= 24 or not navigation.segment_clear(npc.position, Preparation.CONTROLS.gate): return false
+	return true
+func start_preparation() -> bool:
+	if not can_rehearse() or player.position.distance_to(Preparation.CONTROLS.gate) >= 48: return false
+	preparation_route.activate()
+	return true
+func can_preparation(event: String) -> bool:
+	if not Preparation.SITES.has(event) or player.health <= 0 or player.attack_time > 0 or player.dodge_time > 0 or not safe_to_rest(): return false
+	var site: Array = Preparation.SITES[event]
+	if Session.region != site[0]: return false
+	var point: Vector2 = npcs[site[1]].position if npcs.has(site[1]) and npcs[site[1]].visible else (definition.get("junction_sites", {}).get(site[1], Preparation.CONTROLS.get(site[1], Vector2.INF)))
+	if player.position.distance_to(point) >= 48 or not navigation.segment_clear(player.position, point): return false
+	if event == "prove" and (not can_rehearse() or preparation_route.step != Preparation.ROUTE.size() or not (preparation_route.active or preparation_route.pending)): return false
+	return not Preparation.resolve(Session.nature, Session.gathered, Session.opened, Session.inventory, player_vitals(), event, event == "prove").is_empty()
+func preparation_action(event: String) -> bool:
+	if not can_preparation(event): return false
+	_sync_context()
+	if not Session.preparation_event(event, player.position, player_vitals(), event == "prove"): return false
+	if is_instance_valid(preparation_route) and event != "prove": preparation_route.cancel()
+	player.stats_changed.emit()
+	Sound.play_at("collect", player.position)
+	return true
+func _update_preparation_environment() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	for role in ["witness", "crafter"]:
+		if not definition.has(role): continue
+		var invited: bool = "prep:consent:" + role in Session.gathered
+		npcs[role].visible = invited if Session.region == "rotunda" else not invited
+	if is_instance_valid(preparation_route):
+		if preparation_route.active and "prep:tested" not in Session.gathered and not can_rehearse(): preparation_route.cancel()
+		preparation_route.queue_redraw()
+	_update_npcs()

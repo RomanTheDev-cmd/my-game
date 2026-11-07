@@ -1,4 +1,5 @@
 extends RefCounted
+const Preparation = preload("res://scripts/quests/preparation_rules.gd")
 const Junction = preload("res://scripts/quests/junction_rules.gd")
 const City = preload("res://scripts/quests/city_rules.gd")
 const Forest = preload("res://scripts/quests/forest_rules.gd")
@@ -139,6 +140,8 @@ static func validate(data: Variant) -> bool:
 	if not data.nature.landing.is_empty() and data.nature.landing.region != data.region: return false
 	if not Nature.quest_valid(data.nature, data.gathered, data.opened): return false
 	if not Community.valid(data.nature, data.gathered, data.opened): return false
+	if not Preparation.valid(data.gathered, data.opened): return false
+	if data.defeated.any(func(flag): return flag.begins_with("prep:") or flag.begins_with("preparation_")): return false
 	if not Junction.valid(data.gathered, data.opened): return false
 	if data.defeated.any(func(flag): return flag.begins_with("junction:") or flag.begins_with("junction_")): return false
 	if not City.valid(data.nature, data.gathered, data.opened): return false

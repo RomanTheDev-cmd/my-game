@@ -73,7 +73,7 @@ const REGIONS := {
 		"chests": [{"id": "courtyard_supplies", "point": Vector2(980, 780), "requires_opened": ["city_report"], "items": {"herb": 2, "potion": 1}}]
 	},
 	"rotunda": {
-		"indoor": true, "location": "LOCATION_ROTUNDA", "description": "REGION_ROTUNDA", "camp": Vector2(340, 820), "mentor": Vector2(650, 820), "steward": Vector2(1000, 480),
+		"indoor": true, "location": "LOCATION_ROTUNDA", "description": "REGION_ROTUNDA", "camp": Vector2(340, 820), "mentor": Vector2(650, 820), "steward": Vector2(1000, 480), "witness": Vector2(480, 430), "crafter": Vector2(480, 940),
 		"exit": Vector2(135, 650), "destination": "workshop", "arrival": Vector2(830, 1110), "exit_label": "TO_WORKSHOP",
 		"herbs": [Vector2(500, 1020)], "enemies": [],
 		"junction_sites": {"table": Vector2(620, 650), "console": Vector2(1200, 650)}

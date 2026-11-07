@@ -819,6 +819,70 @@ func capture() -> void:
 	game.world.junction_action("public")
 	game.resume()
 	await shot("joint_result", game.get_viewport().get_camera_2d())
+	var preparation_fixture = load("res://tests/support/preparation_fixture.gd")
+	if not preparation_fixture.configured(session):
+		printerr("CAPTURE_PREPARATION_FIXTURE_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	session.region = "rotunda"
+	session.arrival = Vector2(1580, 650)
+	game._build_world()
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	game.resume()
+	var prep_frames := 0
+	while not game.world.can_rehearse() and prep_frames < 1100:
+		await physics_frame
+		prep_frames += 1
+	if not game.world.can_rehearse():
+		printerr("CAPTURE_PREPARATION_POSTS_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	game.world.player.position = Vector2(1050, 430)
+	await shot("preparation_support", game.get_viewport().get_camera_2d())
+	game.show_map()
+	await shot("preparation_map")
+	game.resume()
+	game.world.player.position = game.world.definition.junction_sites.table
+	game.world.interact()
+	await shot("preparation_plan")
+	game.resume()
+	game.world.player.position = Vector2(1580, 650)
+	game.world.interact()
+	await shot("preparation_gate")
+	game.screen.find_child("prep_start", true, false).pressed.emit()
+	game.world.player.set_physics_process(true)
+	Input.action_press("move_left")
+	while game.world.player.position.x > 1350: await physics_frame
+	Input.action_release("move_left")
+	game.world.player.set_physics_process(false)
+	await shot("preparation_walk", game.get_viewport().get_camera_2d())
+	DirAccess.make_dir_absolute("user://save.json.tmp")
+	game.world.player.set_physics_process(true)
+	Input.action_press("move_left")
+	while game.world.player.position.x > 525: await physics_frame
+	Input.action_release("move_left")
+	game.world.player.set_physics_process(false)
+	if not game.world.preparation_route.pending:
+		printerr("CAPTURE_PREPARATION_RETRY_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	await shot("preparation_retry", game.get_viewport().get_camera_2d())
+	DirAccess.remove_absolute("user://save.json.tmp")
+	game.world.preparation_route.activate()
+	if "prep:tested" not in session.gathered:
+		printerr("CAPTURE_PREPARATION_PROOF_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	game.world.player.position = game.world.npcs.mentor.position
+	game.world.interact()
+	game.screen.find_child("prep_report", true, false).pressed.emit()
+	await shot("preparation_ready_review")
+	game.screen.find_child("prep_confirm_report", true, false).pressed.emit()
+	game.show_journal()
+	await shot("preparation_journal")
+	game.resume()
+	await shot("preparation_result", game.get_viewport().get_camera_2d())
 	print("CAPTURE_OK")
 	await TestExit.finish(self)
 func shot(file: String, camera: Camera2D = null) -> void:

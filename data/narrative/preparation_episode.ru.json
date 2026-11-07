@@ -1,0 +1,21 @@
+{
+  "status": "preparation playable; actual rescue and aftermath pending",
+  "rules": "scripts/quests/preparation_rules.gd",
+  "source_sequences": ["preparation", "human_preparation"],
+  "participants": ["witness", "crafter"],
+  "principles": [
+    "actual recorded common result, then separate acceptance",
+    "personal reviewed consent; helpers stay human and alive",
+    "existing personal memories survive visible relocation",
+    "two revisable assignments with actual navigation to posts",
+    "required support settings explained from real previous decisions",
+    "ordinary hero physically walks ordered safe route while both posts held",
+    "no time pressure or forced casualty",
+    "pause never adds checkpoints; form/attack/dodge/threat interrupt",
+    "transient rehearsal resets on travel/load; consents and setup persist",
+    "failed proof write exposes explicit retry without early reward",
+    "separate reviewed readiness, not offscreen rescue",
+    "human and returned-human routes stay available"
+  ],
+  "continuation": "Next implement actual human/vampire/werewolf rescue routes and aftermath, respecting personal consent and non-fatal ordinary route. Preparation witnesses can assist each nature; no mandatory loss of mentor or helper."
+}
