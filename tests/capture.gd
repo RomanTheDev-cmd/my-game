@@ -747,6 +747,78 @@ func capture() -> void:
 	await shot("city_final_board", game.get_viewport().get_camera_2d())
 	game.world.interact()
 	await shot("city_outcome")
+	var junction_fixture = load("res://tests/support/junction_fixture.gd")
+	junction_fixture.ready(session_for_skills)
+	session_for_skills.region = "workshop"
+	session_for_skills.arrival = Vector2(780, 700)
+	game._build_world()
+	game.resume()
+	for i in 3: await process_frame
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	for npc in game.world.npcs.values(): npc.set_physics_process(false)
+	game.world.player.position = game.world.npcs.mentor.position
+	game.world.interact()
+	await shot("joint_invitation")
+	if not game.world.junction_action("accept"):
+		printerr("CAPTURE_JOINT_INVITE_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	session_for_skills.region = "rotunda"
+	session_for_skills.arrival = Vector2(1000, 650)
+	game._build_world()
+	game.resume()
+	for i in 3: await process_frame
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	for npc in game.world.npcs.values(): npc.set_physics_process(false)
+	await shot("joint_rotunda", game.get_viewport().get_camera_2d())
+	game.show_map()
+	await shot("joint_map")
+	game.resume()
+	game.world.player.position = game.world.npcs.steward.position
+	game.world.interact()
+	await shot("joint_participant")
+	game.world.junction_action("hear")
+	game.resume()
+	game.world.player.position = game.world.definition.junction_sites.table
+	game.world.interact()
+	await shot("joint_records")
+	game.world.junction_action("map")
+	game.resume()
+	game.world.player.position = game.world.definition.junction_sites.console
+	game.world.interact()
+	await shot("joint_isolation")
+	game.world.junction_action("manual")
+	game.resume()
+	Input.action_press("interact")
+	game.world.interact()
+	await create_timer(1.2).timeout
+	await shot("joint_measure", game.get_viewport().get_camera_2d())
+	Input.action_release("interact")
+	for i in 3: await process_frame
+	DirAccess.make_dir_absolute("user://save.json.tmp")
+	Input.action_press("interact")
+	game.world.interact()
+	await create_timer(3.15).timeout
+	Input.action_release("interact")
+	await shot("joint_retry", game.get_viewport().get_camera_2d())
+	DirAccess.remove_absolute("user://save.json.tmp")
+	game.world.interact()
+	if "junction:proof" not in session_for_skills.gathered:
+		printerr("CAPTURE_JOINT_PROOF_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	await shot("joint_proved", game.get_viewport().get_camera_2d())
+	game.world.player.position = game.world.npcs.steward.position
+	game.world.junction_action("explain")
+	game.world.player.position = game.world.npcs.mentor.position
+	game.world.interact()
+	game.screen.find_child("joint_public", true, false).pressed.emit()
+	await shot("joint_review")
+	game.world.junction_action("public")
+	game.resume()
+	await shot("joint_result", game.get_viewport().get_camera_2d())
 	print("CAPTURE_OK")
 	await TestExit.finish(self)
 func shot(file: String, camera: Camera2D = null) -> void:

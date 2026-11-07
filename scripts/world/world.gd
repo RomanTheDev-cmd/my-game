@@ -1,4 +1,7 @@
 extends Node2D
+const Junction = preload("res://scripts/quests/junction_rules.gd")
+const Rotunda = preload("res://scripts/world/rotunda_landscape.gd")
+const JunctionConsole = preload("res://scripts/world/junction_console.gd")
 const City = preload("res://scripts/quests/city_rules.gd")
 const CityLandscape = preload("res://scripts/world/city_landscape.gd")
 const CityBoard = preload("res://scripts/world/city_board.gd")
@@ -44,6 +47,7 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var junction_objects: Dictionary = {}
 var city_objects: Dictionary = {}
 var forest_signs: Array[Node2D] = []
 var campaign_devices: Dictionary = {}
@@ -77,11 +81,18 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = CityLandscape.new() if Session.region == "velshof" else Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
+	landscape = Rotunda.new() if Session.region == "rotunda" else CityLandscape.new() if Session.region == "velshof" else Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
 	_build_commission_objects()
+	for id in definition.get("junction_sites", {}):
+		var object := JunctionConsole.new()
+		object.kind = id
+		object.world = self
+		object.position = definition.junction_sites[id]
+		add_child(object)
+		junction_objects[id] = object
 	for id in definition.get("city_sites", {}):
 		var object := CityBoard.new()
 		object.kind = id
@@ -199,6 +210,8 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_junction_environment)
+	_update_junction_environment()
 	Session.changed.connect(_update_city_environment)
 	_update_city_environment()
 	Session.changed.connect(_update_forest_environment)
@@ -273,9 +286,11 @@ func nearby_key() -> String:
 		return "KEEPER_NAME"
 	if wayfarer.visible and player.position.distance_to(wayfarer.position) < 45:
 		return "AID_NAME"
-	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper", "crafter", "archivist"]:
+	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper", "crafter", "archivist", "steward"]:
 		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
 			return kind.to_upper() + "_NAME"
+	for id in junction_objects:
+		if player.position.distance_to(junction_objects[id].position) < 45: return "JOINT_SITE_" + id.to_upper()
 	for id in city_objects:
 		if player.position.distance_to(city_objects[id].position) < 45: return "CITY_SITE_" + id.to_upper()
 	for i in forest_signs.size():
@@ -315,6 +330,12 @@ func interact() -> void:
 	_update_tracking()
 	_sync_context()
 	var key := nearby_key()
+	if key == "STEWARD_NAME" or (key == "MENTOR_NAME" and (Session.region == "rotunda" or Junction.ready(Session.opened))) or key.begins_with("JOINT_SITE_"):
+		var target := key.trim_suffix("_NAME").to_lower() if key.ends_with("_NAME") else key.trim_prefix("JOINT_SITE_").to_lower()
+		if target == "console" and Junction.stage(Session.gathered, Session.opened) == 2 and Session.gathered.any(func(flag): return flag in Junction.METHODS):
+			junction_objects.console.activate()
+		else: dialog_requested.emit("junction:" + ("invite" if target == "mentor" and Session.region == "workshop" else target))
+		return
 	if key in ["CRAFTER_NAME", "ARCHIVIST_NAME"] or key.begins_with("CITY_SITE_"):
 		var target := key.trim_suffix("_NAME").to_lower() if key.ends_with("_NAME") else key.trim_prefix("CITY_SITE_").to_lower()
 		if key.ends_with("_NAME") and Session.nature.form != "human": dialog_requested.emit("reaction:" + target)
@@ -901,4 +922,44 @@ func _update_city_environment() -> void:
 		object.signatures = Session.gathered.filter(func(flag): return flag in City.SIGNATURES).size()
 		object.completed = City.REPORT in Session.opened
 		object.worked = Session.gathered.any(func(flag): return flag in City.WORK)
+		object.queue_redraw()
+
+func can_measure() -> bool:
+	if not Session.running or Session.region != "rotunda" or not junction_objects.has("console") or player.health <= 0 or player.dodge_time > 0 or player.attack_time > 0 or Session.nature.form != "human" or not safe_to_rest(): return false
+	var point: Vector2 = junction_objects.console.position
+	return Junction.stage(Session.gathered, Session.opened) == 2 and Session.gathered.any(func(flag): return flag in Junction.METHODS) and player.position.distance_to(point) < 48 and navigation.segment_clear(player.position, point)
+func can_junction(event: String) -> bool:
+	if not Junction.SITES.has(event) or player.health <= 0 or player.dodge_time > 0 or not safe_to_rest(): return false
+	var site: Array = Junction.SITES[event]
+	if Session.region != site[0]: return false
+	var point: Vector2 = npcs[site[1]].position if npcs.has(site[1]) and npcs[site[1]].visible else definition.get("junction_sites", {}).get(site[1], Vector2.INF)
+	if player.position.distance_to(point) >= 48 or not navigation.segment_clear(player.position, point): return false
+	var measured := 0.0
+	if event == "prove":
+		if not can_measure() or not (junction_objects.console.active or junction_objects.console.pending): return false
+		measured = junction_objects.console.progress
+	return not Junction.resolve(Session.nature, Session.skills, Session.gathered, Session.opened, Session.inventory, player_vitals(), event, player.magic_cooldown, player.shield_recharge, measured).is_empty()
+func junction_action(event: String) -> bool:
+	if not can_junction(event): return false
+	_sync_context()
+	var measured: float = junction_objects.console.progress if event == "prove" else 0.0
+	var result := Session.junction_event(event, player.position, player_vitals(), player.magic_cooldown, player.shield_recharge, measured)
+	if result.is_empty(): return false
+	player.mana = Session.vitals.mana
+	player.stamina = Session.vitals.stamina
+	player.magic_cooldown = maxf(player.magic_cooldown, result.cooldown)
+	player.shield_recharge = maxf(player.shield_recharge, result.recharge)
+	player.stats_changed.emit()
+	Sound.play_at("collect", player.position)
+	return true
+func _update_junction_environment() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	if definition.has("mentor") and Session.region in ["workshop", "rotunda"]:
+		npcs.mentor.visible = ("junction:accepted" in Session.gathered) if Session.region == "rotunda" else ("junction:accepted" not in Session.gathered)
+	for object in junction_objects.values():
+		object.records = Session.opened.filter(func(flag): return flag in Junction.RECORDS).size()
+		object.isolated = Session.gathered.any(func(flag): return flag in Junction.METHODS)
+		object.proved = "junction:proof" in Session.gathered
+		object.outcome = "public" if Junction.CHOICES[0] in Session.gathered else ("private" if Junction.CHOICES[1] in Session.gathered else "")
+		if object.kind == "console" and object.active and not object.proved and not can_measure(): object.cancel_measure()
 		object.queue_redraw()

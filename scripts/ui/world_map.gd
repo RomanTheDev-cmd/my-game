@@ -74,7 +74,7 @@ func _draw() -> void:
 		draw_circle(keeper, 3, Color("e9e1ce"))
 	if definition.has("wayfarer"):
 		draw_circle(project(npcs.get("wayfarer", definition.wayfarer)), 3, Color("e9e1ce"))
-	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper", "crafter", "archivist"]:
+	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper", "crafter", "archivist", "steward"]:
 		if npcs.has(kind):
 			draw_circle(project(npcs[kind]), 3, Color("d5d7af"))
 	var player := project(player_position)

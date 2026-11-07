@@ -1,0 +1,20 @@
+{
+  "status": "common_discovery playable node; preparation/rescue pending",
+  "rules": "scripts/quests/junction_rules.gd",
+  "source_sequences": [
+    "common_discovery"
+  ],
+  "principles": [
+    "three actual regional reports prerequisite",
+    "no retcon of regional order/results",
+    "mentor relocation is persistent and visible in one active place",
+    "steward is not a forced villain and friend remains alive",
+    "ordinary safe isolation or actual learned aegis profile",
+    "real held input for three seconds, interruptible and harmless",
+    "isolation persists, unfinished measurement is transient",
+    "write failure has explicit retry without reward",
+    "two reviewed information-handling choices",
+    "human/changed-human access and personal memories retained"
+  ],
+  "note": "The caretaker admits maintaining an inherited promise out of fear. Mentor willingly stabilizes the link pending a later actual rescue episode; no offscreen mandatory death."
+}

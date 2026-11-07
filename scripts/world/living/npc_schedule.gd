@@ -1,7 +1,7 @@
 extends RefCounted
 const Regions = preload("res://scripts/world/region_catalog.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
-const KINDS := ["merchant", "keeper", "wayfarer", "warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper", "crafter", "archivist"]
+const KINDS := ["merchant", "keeper", "wayfarer", "warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper", "crafter", "archivist", "steward"]
 
 static func shop_open(minutes: float) -> bool:
 	return Clock.in_hours(Clock.hour(minutes), 7, 21)
@@ -25,6 +25,7 @@ static func destination(region: String, kind: String, minutes: float, aid_stage:
 	if region == "terrace" and kind == "witness" and not Clock.in_hours(hour, 7, 21): return Vector2(460, 790)
 	if region == "woodroad" and kind == "roadkeeper" and not Clock.in_hours(hour, 7, 21): return Vector2(430, 780)
 	if region == "velshof" and not Clock.in_hours(hour, 7, 21): return {"crafter": Vector2(500, 820), "archivist": Vector2(1190, 820)}.get(kind, point)
+	if region == "rotunda" and kind == "steward" and not Clock.in_hours(hour, 7, 21): return Vector2(980, 820)
 	return point
 
 static func valid_point(value: Variant) -> bool:

@@ -19,7 +19,7 @@ const REGIONS := {
 	"workshop": {
 		"location": "LOCATION_WORKSHOP", "description": "REGION_WORKSHOP", "camp": Vector2(380, 730),
 		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1800, 1160), "exit_label": "TO_LAKE",
-		"extra_exits": [{"point": Vector2(850, 200), "destination": "velshof", "arrival": Vector2(240, 650), "label": "TO_CITY", "direction": 1}, {"point": Vector2(1800, 420), "destination": "waterworks", "arrival": Vector2(240, 650), "label": "TO_WATERWORKS", "direction": 1},
+		"extra_exits": [{"point": Vector2(850, 1120), "destination": "rotunda", "arrival": Vector2(240, 650), "label": "TO_ROTUNDA", "direction": 1}, {"point": Vector2(850, 200), "destination": "velshof", "arrival": Vector2(240, 650), "label": "TO_CITY", "direction": 1}, {"point": Vector2(1800, 420), "destination": "waterworks", "arrival": Vector2(240, 650), "label": "TO_WATERWORKS", "direction": 1},
 			{"point": Vector2(1780, 1200), "destination": "thicket", "arrival": Vector2(240, 650), "label": "TO_THICKET", "direction": 1}],
 		"warden": Vector2(360, 540), "wright": Vector2(570, 540), "tender": Vector2(520, 870), "mentor": Vector2(780, 700),
 		"herbs": [Vector2(580, 850), Vector2(780, 1080)],
@@ -71,6 +71,12 @@ const REGIONS := {
 		"enemies": [["velshof_backstreet", Vector2(1750, 1020)], ["velshof_archer", Vector2(1720, 170), "ranged"]],
 		"city_sites": {"board": Vector2(850, 700), "press": Vector2(600, 780), "archive": Vector2(1210, 700)},
 		"chests": [{"id": "courtyard_supplies", "point": Vector2(980, 780), "requires_opened": ["city_report"], "items": {"herb": 2, "potion": 1}}]
+	},
+	"rotunda": {
+		"indoor": true, "location": "LOCATION_ROTUNDA", "description": "REGION_ROTUNDA", "camp": Vector2(340, 820), "mentor": Vector2(650, 820), "steward": Vector2(1000, 480),
+		"exit": Vector2(135, 650), "destination": "workshop", "arrival": Vector2(830, 1110), "exit_label": "TO_WORKSHOP",
+		"herbs": [Vector2(500, 1020)], "enemies": [],
+		"junction_sites": {"table": Vector2(620, 650), "console": Vector2(1200, 650)}
 	},
 	"waterworks": {
 		"indoor": true, "location": "LOCATION_WATERWORKS", "description": "REGION_WATERWORKS", "camp": Vector2(300, 800),
