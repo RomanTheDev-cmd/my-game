@@ -10,7 +10,7 @@ const REGIONS := {
 	},
 	"lake": {
 		"location": "LOCATION_LAKE", "description": "REGION_LAKE", "camp": Vector2(360, 610),
-		"extra_exits": [{"point": Vector2(1800, 650), "destination": "ruins", "arrival": Vector2(260, 650), "label": "TO_RUINS", "direction": 1},
+		"extra_exits": [{"point": Vector2(135, 1000), "destination": "haven", "arrival": Vector2(240, 650), "label": "TO_HAVEN", "direction": -1}, {"point": Vector2(1800, 650), "destination": "ruins", "arrival": Vector2(260, 650), "label": "TO_RUINS", "direction": 1},
 			{"point": Vector2(1750, 1120), "destination": "workshop", "arrival": Vector2(240, 650), "label": "TO_WORKSHOP", "direction": 1}],
 		"event_point": Vector2(690, 700), "wayfarer": Vector2(480, 620), "exit": Vector2(135, 650), "destination": "crossing", "arrival": Vector2(1730, 500), "exit_label": "TO_CROSSING",
 		"herbs": [Vector2(600, 650), Vector2(1100, 880), Vector2(1500, 750)],
@@ -36,6 +36,13 @@ const REGIONS := {
 		"chests": [{"id": "thicket_cache_0", "point": Vector2(340, 320), "hidden": true, "items": {"coin": 3, "herb": 1}},
 			{"id": "thicket_cache_1", "point": Vector2(1210, 380), "hidden": true, "items": {"coin": 3, "herb": 1}},
 			{"id": "thicket_cache_2", "point": Vector2(1740, 1080), "hidden": true, "items": {"coin": 3, "herb": 1}}]
+	},
+	"haven": {
+		"location": "LOCATION_HAVEN", "description": "REGION_HAVEN", "camp": Vector2(350, 760), "host": Vector2(440, 600),
+		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(240, 1000), "exit_label": "TO_LAKE",
+		"herbs": [Vector2(610, 820), Vector2(1270, 900)],
+		"enemies": [["haven_1", Vector2(1640, 320)], ["haven_archer", Vector2(1670, 1000), "ranged"]],
+		"community_sites": {"supply": Vector2(720, 420), "route": Vector2(1320, 600), "search": Vector2(1450, 860)}
 	},
 	"waterworks": {
 		"indoor": true, "location": "LOCATION_WATERWORKS", "description": "REGION_WATERWORKS", "camp": Vector2(300, 800),

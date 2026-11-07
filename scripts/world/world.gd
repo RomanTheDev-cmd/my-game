@@ -1,4 +1,6 @@
 extends Node2D
+const Community = preload("res://scripts/factions/community_rules.gd")
+const Haven = preload("res://scripts/world/haven_landscape.gd")
 const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
 const Pack = preload("res://scripts/nature/pack_rules.gd")
 const Thicket = preload("res://scripts/world/thicket_landscape.gd")
@@ -30,6 +32,8 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var community_delivery: Node2D
+var community_markers: Dictionary = {}
 var pack_markers: Dictionary = {}
 var tracking_cue: Node2D
 var boss: CharacterBody2D
@@ -57,11 +61,23 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
+	landscape = Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
 	_build_commission_objects()
+	if Session.region == "haven":
+		community_delivery = CommissionMarker.new()
+		community_delivery.kind = "cache"
+		community_delivery.done = true
+		community_delivery.position = Vector2(560, 600)
+		add_child(community_delivery)
+	for kind in definition.get("community_sites", {}):
+		var marker := CommissionMarker.new()
+		marker.kind = {"supply": "cache", "route": "archive", "search": "scrap"}[kind]
+		marker.position = definition.community_sites[kind]
+		add_child(marker)
+		community_markers[kind] = marker
 	for kind in definition.get("pack_sites", {}):
 		var marker := CommissionMarker.new()
 		marker.kind = "scrap" if kind.begins_with("trail_") else "archive"
@@ -144,6 +160,8 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_community_environment)
+	_update_community_environment()
 	Session.changed.connect(_update_flight_gates)
 	Session.changed.connect(_update_pack_environment)
 	Session.changed.connect(_update_trial_environment)
@@ -208,9 +226,11 @@ func nearby_key() -> String:
 		return "KEEPER_NAME"
 	if wayfarer.visible and player.position.distance_to(wayfarer.position) < 45:
 		return "AID_NAME"
-	for kind in ["warden", "wright", "tender", "tracker"]:
+	for kind in ["warden", "wright", "tender", "tracker", "host"]:
 		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
 			return kind.to_upper() + "_NAME"
+	for target in community_markers:
+		if player.position.distance_to(community_markers[target].position) < 45: return "COMMUNITY_SITE_" + target.to_upper()
 	for target in pack_markers:
 		if player.position.distance_to(pack_markers[target].position) < 45: return "PACK_SITE_" + target.to_upper()
 	for target in commission_markers:
@@ -239,6 +259,10 @@ func nearby_key() -> String:
 func interact() -> void:
 	_sync_context()
 	var key := nearby_key()
+	if key == "HOST_NAME" or key.begins_with("COMMUNITY_SITE_"):
+		if key == "HOST_NAME" and Session.nature.form != "human": dialog_requested.emit("reaction:host")
+		else: dialog_requested.emit("community:" + ("host" if key == "HOST_NAME" else key.trim_prefix("COMMUNITY_SITE_").to_lower()))
+		return
 	if key == "TRIAL_RECORD":
 		record_boss_victory()
 		return
@@ -635,3 +659,21 @@ func _update_flight_gates() -> void:
 			changed = true
 	if changed: navigation.configure(self)
 	landscape.queue_redraw()
+
+func can_community(event: String) -> bool:
+	if not Community.SITES.has(event) or player.health <= 0 or not safe_to_rest(): return false
+	var site: Array = Community.SITES[event]
+	if Session.region != site[0]: return false
+	var point: Vector2 = npcs[site[1]].position if npcs.has(site[1]) and npcs[site[1]].visible else definition.get("community_sites", {}).get(site[1], Vector2.INF)
+	return player.position.distance_to(point) < 48 and not Community.resolve(Session.nature, Session.gathered, Session.opened, Session.inventory, Session.gear_owned, Session.world_state.reputation, player.mana, event).is_empty()
+func community_action(event: String) -> bool:
+	if not can_community(event): return false
+	_sync_context()
+	if not Session.community_event(event, player.position, player_vitals()): return false
+	player.mana = Session.vitals.mana
+	return true
+func _update_community_environment() -> void:
+	if is_instance_valid(community_delivery): community_delivery.visible = Community.stage(Session.gathered) >= 3
+	for target in community_markers:
+		community_markers[target].done = "community:seen:" + target in Session.gathered if target != "search" else Community.stage(Session.gathered) >= 3
+		community_markers[target].queue_redraw()

@@ -1,4 +1,5 @@
 extends RefCounted
+const Community = preload("res://scripts/factions/community_rules.gd")
 const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
@@ -132,6 +133,7 @@ static func validate(data: Variant) -> bool:
 	if not Dialogue.valid(data.gathered): return false
 	if not data.nature.landing.is_empty() and data.nature.landing.region != data.region: return false
 	if not Nature.quest_valid(data.nature, data.gathered, data.opened): return false
+	if not Community.valid(data.nature, data.gathered, data.opened): return false
 	if not Trial.valid(data.gathered, data.defeated, data.opened, int(data.world_state.commission.stage)):
 		return false
 	if int(data.quest) == 2 and data.inventory.get("lantern", 0) != 1:

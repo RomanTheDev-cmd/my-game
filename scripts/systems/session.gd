@@ -1,4 +1,5 @@
 extends Node
+const Community = preload("res://scripts/factions/community_rules.gd")
 const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
 const Pack = preload("res://scripts/nature/pack_rules.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
@@ -446,4 +447,23 @@ func pack_event(event: String, position: Vector2, current_vitals: Dictionary) ->
 		return false
 	apply(data)
 	notice.emit("PACK_UPDATED")
+	return true
+
+func community_event(event: String, position: Vector2, current_vitals: Dictionary) -> bool:
+	var result := Community.resolve(nature, gathered, opened, inventory, gear_owned, world_state.reputation, current_vitals.mana, event)
+	if result.is_empty(): return false
+	var data := snapshot(position, current_vitals)
+	data.nature = result.nature
+	data.gathered = result.gathered
+	data.opened = result.opened
+	data.inventory = result.inventory
+	data.gear_owned = result.owned
+	data.world_state.reputation = result.reputation
+	data.vitals.mana = result.mana
+	data.xp = mini(100000, xp + result.xp)
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("COMMUNITY_SAVED")
 	return true

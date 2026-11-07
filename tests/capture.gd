@@ -420,5 +420,67 @@ func capture() -> void:
 	for i in 10: await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/mist_alert.png")
+	NatureFixture.completed_episode(session_for_skills)
+	session_for_skills.region = "crossing"
+	session_for_skills.arrival = Vector2(520, 490)
+	game._build_world()
+	game.resume()
+	game.world.player.position = game.world.npcs.keeper.position
+	var community_page = load("res://scripts/ui/community_screen.gd")
+	community_page.show_page(game, "keeper", "join_watch")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/community_consent.png")
+	game.resume()
+	game.world.community_action("join_watch")
+	session_for_skills.region = "haven"
+	session_for_skills.arrival = Vector2(520, 650)
+	game._build_world()
+	game.resume()
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/haven_before.png")
+	game.show_map()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/haven_map.png")
+	game.resume()
+	for site in ["supply", "route"]:
+		game.world.player.position = game.world.definition.community_sites[site]
+		game.world.community_action("seen_" + site)
+	game.world.player.position = game.world.npcs.host.position
+	game.world.interact()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/community_help.png")
+	game.resume()
+	game.world.community_action("aid_craft")
+	game.world.interact()
+	community_page.show_page(game, "host", "report_share")
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/community_outcome.png")
+	game.resume()
+	game.world.community_action("report_share")
+	game.world.player.position = Vector2(520, 650)
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/haven_after.png")
+	game.show_equipment()
+	for i in 3: await process_frame
+	game.screen.find_child("equip_relay_cloak", true, false).grab_focus()
+	for i in 2: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/community_equipment.png")
+	NatureFixture.vampire(session_for_skills)
+	session_for_skills.region = "haven"
+	session_for_skills.arrival = Vector2(440, 600)
+	game._build_world()
+	game.resume()
+	game.world.player.position = game.world.npcs.host.position
+	game.world.interact()
+	await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/dialogue_host_vampire.png")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)

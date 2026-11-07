@@ -6,6 +6,7 @@ const PackScreen = preload("res://scripts/ui/pack_screen.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const NatureScreen = preload("res://scripts/ui/nature_screen.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
+const CommunityScreen = preload("res://scripts/ui/community_screen.gd")
 const TrialScreen = preload("res://scripts/ui/trial_screen.gd")
 const CommissionScreen = preload("res://scripts/ui/commission_screen.gd")
 const World = preload("res://scripts/world/world.gd")
@@ -161,7 +162,17 @@ func _focus_first() -> void:
 	for child in screen.find_children("*", "Button", true, false):
 		if not child.disabled:
 			child.grab_focus()
+			_reveal_focus(child)
 			break
+
+func _reveal_focus(button: Button) -> void:
+	# Newly built containers need one layout frame before scrolling to focus.
+	await get_tree().process_frame
+	if not is_instance_valid(button) or not button.is_inside_tree() or not button.has_focus(): return
+	var parent := button.get_parent()
+	while parent != null and parent != screen:
+		if parent is ScrollContainer: parent.ensure_control_visible(button)
+		parent = parent.get_parent()
 
 func show_title() -> void:
 	Session.running = false
@@ -287,6 +298,7 @@ func show_journal() -> void:
 	if Session.aid_quest > 0:
 		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	CommunityScreen.journal(self, contents)
 	PackScreen.journal(self, contents)
 	NatureScreen.journal(self, contents)
 	TrialScreen.journal(self, contents)
@@ -309,10 +321,13 @@ func show_journal() -> void:
 	_button("BACK", resume).grab_focus()
 
 func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void:
-	var role := kind.trim_prefix("commission:").trim_prefix("reaction:")
+	var role := kind.trim_prefix("commission:").trim_prefix("reaction:").trim_prefix("community:")
 	if kind == "merchant_closed": role = "merchant"
 	if not bypass_reaction and DialogueRules.GROUPS.has(role) and DialogueRules.context(Session.nature) != "":
 		DialogueScreen.show_page(self, role, kind if not kind.begins_with("reaction:") else "")
+		return
+	if kind == "host" or kind.begins_with("community:"):
+		CommunityScreen.show_page(self, "host" if kind == "host" else kind.trim_prefix("community:"))
 		return
 	if kind == "tracker" or kind.begins_with("pack:"):
 		show_pack("tracker" if kind == "tracker" else kind.trim_prefix("pack:"))
@@ -360,6 +375,7 @@ func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void
 		_button("NATURE_CURE_TITLE", show_nature.bind("keeper")).name = "nature_keeper"
 	if "werewolf" in Session.nature.history:
 		_button("PACK_TITLE", show_pack.bind("keeper")).name = "pack_keeper"
+	CommunityScreen.entry(self, "keeper", screen)
 	_button("LATER" if Session.quest == 0 else "CLOSE", resume)
 	_focus_first()
 
@@ -483,6 +499,8 @@ func update_hud() -> void:
 		quest_label.text = tr(NatureScreen.hint(Session.nature))
 	if Pack.stage(Session.gathered) in [1, 2] or (Session.nature.kind == "werewolf" and (Session.nature.cure > 0 or Session.nature.gift == "wild")):
 		quest_label.text = tr(PackScreen.hint(Session.nature, Session.gathered))
+	var community_stage := CommunityScreen.Rules.stage(Session.gathered)
+	if community_stage in [1, 2, 3]: quest_label.text = tr("COMMUNITY_HUD_%d" % community_stage)
 	if is_instance_valid(world.boss) and world.boss.awaiting_record:
 		quest_label.text = tr("TRIAL_RECORD_HELP")
 	var near: String = world.nearby_key()
@@ -616,6 +634,7 @@ func show_aid_dialog() -> void:
 		_button("AID_MAGIC", _aid_action.bind("magic")).disabled = world.player.mana < 35 or not Nature.can_spell(Session.nature, "heal")
 	if "waterworks_report" in Session.opened and "werewolf" not in Session.nature.history:
 		_button("NATURE_TITLE", show_nature.bind("wayfarer")).name = "nature_invitation"
+	CommunityScreen.entry(self, "wayfarer", screen)
 	_button("CLOSE", resume)
 	_focus_first()
 

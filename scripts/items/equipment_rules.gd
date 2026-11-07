@@ -2,6 +2,7 @@ extends RefCounted
 const DEFAULT_OWNED := ["road_sword", "cloth", "wood_shield"]
 const DEFAULT_EQUIPPED := {"weapon": "road_sword", "armor": "cloth", "shield": "wood_shield"}
 const ITEMS := {
+	"relay_cloak": {"slot": "armor", "reduction": 0.18, "price": 16, "sell": 4, "vendor": "community"},
 	"road_sword": {"slot": "weapon", "damage": 28.0, "reach": 49.0, "cooldown": 0.42, "price": 6, "sell": 2},
 	"dagger": {"slot": "weapon", "damage": 22.0, "reach": 42.0, "cooldown": 0.28, "price": 9, "sell": 3},
 	"iron_sword": {"slot": "weapon", "damage": 36.0, "reach": 52.0, "cooldown": 0.48, "price": 15, "sell": 5},

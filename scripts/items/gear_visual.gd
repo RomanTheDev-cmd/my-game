@@ -1,6 +1,9 @@
 extends Node2D
 
 func _draw() -> void:
+	if Session.equipped.armor == "relay_cloak":
+		draw_rect(Rect2(-7, -18, 14, 17), Color("677d87"))
+		draw_rect(Rect2(-2, -17, 4, 4), Color("d1ba85"))
 	if Session.equipped.armor in ["quilted", "chain"]:
 		var color := Color("718598") if Session.equipped.armor == "chain" else Color("697f68")
 		draw_rect(Rect2(-4, -14, 8, 9), color)

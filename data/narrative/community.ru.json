@@ -1,0 +1,17 @@
+{
+  "status": "first playable community assignment, not complete factions/campaign",
+  "rules": "scripts/factions/community_rules.gd",
+  "principles": [
+    "informed voluntary membership distinct from permanent nature",
+    "all kinds retain a craft alternative",
+    "two physical observations before aid",
+    "consent before blood help",
+    "no mandatory casualty or real-time failure timer",
+    "return preserves membership and earned trust",
+    "two explained reward choices with one-time consequences"
+  ],
+  "character": {
+    "name": "Нерис",
+    "motive": "Оставаться встречающим человеком после долгой жизни в обозах. Хочет устойчивого подвоза, не чудесного спасения от незнакомца."
+  }
+}

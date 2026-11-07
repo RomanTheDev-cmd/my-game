@@ -1,4 +1,5 @@
 extends RefCounted
+const CommunityScreen = preload("res://scripts/ui/community_screen.gd")
 const Rules = preload("res://scripts/nature/pack_rules.gd")
 static func text(ui: Node, parent: Node, key: String, size: int = 17) -> Label:
 	var label: Label = ui._label(parent, key, size)
@@ -43,6 +44,7 @@ static func show_page(ui: Node, target: String = "tracker", confirm: String = ""
 		button.disabled = not ui.world.can_pack(event)
 	if target == "tracker" and Session.nature.kind == "werewolf":
 		ui._button("NATURE_TITLE", ui.show_nature, contents)
+	if target == "tracker": CommunityScreen.entry(ui, "tracker", contents)
 	ui._button("BACK", ui.resume)
 	ui._focus_first()
 static func _act(ui: Node, event: String, target: String) -> void:
