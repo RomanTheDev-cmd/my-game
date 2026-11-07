@@ -1,0 +1,24 @@
+{
+  "status": "first commitment and first lake evidence episode, complete campaign pending",
+  "source_sequences": [
+    "first_commitment",
+    "regional_hub",
+    "lake_history"
+  ],
+  "rules": "scripts/quests/campaign_rules.gd",
+  "characters": {
+    "mentor": "Вальтерн возвращает инструмент без условия; хочет не просить веры на слово, а закончить совместную запись.",
+    "witness": "Элида живёт рядом с местом памяти и не хочет, чтобы из её слов сделали предсказание."
+  },
+  "principles": [
+    "base quest completion only; optional nature/community/field episodes not prerequisite",
+    "free tool before separate acceptance",
+    "two sources in any order and repeatable reading",
+    "persistent physical dial state with clear authored hints",
+    "manual instrument for all ordinary forms",
+    "consent before blood link; tracking in wolf form",
+    "no mandatory casualty",
+    "one persistent evidence method and reward choice",
+    "tool remains with player and cannot be sold"
+  ]
+}

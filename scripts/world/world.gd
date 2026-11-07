@@ -1,4 +1,7 @@
 extends Node2D
+const Campaign = preload("res://scripts/quests/campaign_rules.gd")
+const Terrace = preload("res://scripts/world/terrace_landscape.gd")
+const CampaignDevice = preload("res://scripts/world/campaign_device.gd")
 const Field = preload("res://scripts/magic/field_rules.gd")
 const FieldDevice = preload("res://scripts/world/field_device.gd")
 const Magic = preload("res://scripts/magic/magic_rules.gd")
@@ -35,6 +38,7 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var campaign_devices: Dictionary = {}
 var field_devices: Dictionary = {}
 var community_delivery: Node2D
 var community_markers: Dictionary = {}
@@ -65,11 +69,17 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
+	landscape = Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
 	_build_commission_objects()
+	for id in definition.get("story_sites", {}):
+		var device := CampaignDevice.new()
+		device.kind = id
+		device.position = definition.story_sites[id]
+		add_child(device)
+		campaign_devices[id] = device
 	for id in definition.get("field_sites", {}):
 		var device := FieldDevice.new()
 		device.kind = id
@@ -170,6 +180,8 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_campaign_environment)
+	_update_campaign_environment()
 	Session.changed.connect(_update_field_environment)
 	_update_field_environment()
 	Session.changed.connect(_update_community_environment)
@@ -238,9 +250,11 @@ func nearby_key() -> String:
 		return "KEEPER_NAME"
 	if wayfarer.visible and player.position.distance_to(wayfarer.position) < 45:
 		return "AID_NAME"
-	for kind in ["warden", "wright", "tender", "tracker", "host"]:
+	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness"]:
 		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
 			return kind.to_upper() + "_NAME"
+	for id in campaign_devices:
+		if player.position.distance_to(campaign_devices[id].position) < 45: return "STORY_SITE_" + id.to_upper()
 	for id in field_devices:
 		if player.position.distance_to(field_devices[id].position) < 45: return "FIELD_SITE_" + id.to_upper()
 	for target in community_markers:
@@ -274,6 +288,11 @@ func interact() -> void:
 	_update_tracking()
 	_sync_context()
 	var key := nearby_key()
+	if key in ["MENTOR_NAME", "WITNESS_NAME"] or key.begins_with("STORY_SITE_"):
+		var target := key.trim_suffix("_NAME").to_lower() if key.ends_with("_NAME") else key.trim_prefix("STORY_SITE_").to_lower()
+		if key.ends_with("_NAME") and Session.nature.form != "human": dialog_requested.emit("reaction:" + target)
+		else: dialog_requested.emit("story:" + target)
+		return
 	if key.begins_with("FIELD_SITE_"):
 		dialog_requested.emit("field:" + key.trim_prefix("FIELD_SITE_").to_lower())
 		return
@@ -745,3 +764,24 @@ func _update_field_environment() -> void:
 		var entry: Dictionary = chest.get_meta("definition")
 		if entry.has("requires_opened"): chest.visible = entry.requires_opened.all(func(flag): return flag in Session.opened)
 	landscape.queue_redraw()
+
+func can_campaign(event: String) -> bool:
+	if not Campaign.SITES.has(event) or player.health <= 0 or player.dodge_time > 0 or not safe_to_rest(): return false
+	var site: Array = Campaign.SITES[event]
+	if Session.region != site[0]: return false
+	var point: Vector2 = npcs[site[1]].position if npcs.has(site[1]) and npcs[site[1]].visible else definition.get("story_sites", {}).get(site[1], Vector2.INF)
+	return player.position.distance_to(point) < 48 and navigation.segment_clear(player.position, point) and not Campaign.resolve(Session.nature, Session.quest, Session.gathered, Session.opened, Session.inventory, player_vitals(), event).is_empty()
+func campaign_action(event: String) -> bool:
+	if not can_campaign(event): return false
+	_sync_context()
+	if not Session.campaign_event(event, player.position, player_vitals()): return false
+	player.mana = Session.vitals.mana
+	player.stamina = Session.vitals.stamina
+	Sound.play_at("collect", player.position)
+	player.stats_changed.emit()
+	return true
+func _update_campaign_environment() -> void:
+	for device in campaign_devices.values():
+		device.settings = Campaign.positions(Session.gathered)
+		device.resolved = Campaign.stage(Session.gathered, Session.opened) >= 4
+		device.queue_redraw()

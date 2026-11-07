@@ -10,7 +10,7 @@ const REGIONS := {
 	},
 	"lake": {
 		"location": "LOCATION_LAKE", "description": "REGION_LAKE", "camp": Vector2(360, 610),
-		"extra_exits": [{"point": Vector2(135, 1000), "destination": "haven", "arrival": Vector2(240, 650), "label": "TO_HAVEN", "direction": -1}, {"point": Vector2(1800, 650), "destination": "ruins", "arrival": Vector2(260, 650), "label": "TO_RUINS", "direction": 1},
+		"extra_exits": [{"point": Vector2(1750, 340), "destination": "terrace", "arrival": Vector2(240, 650), "label": "TO_TERRACE", "direction": 1}, {"point": Vector2(135, 1000), "destination": "haven", "arrival": Vector2(240, 650), "label": "TO_HAVEN", "direction": -1}, {"point": Vector2(1800, 650), "destination": "ruins", "arrival": Vector2(260, 650), "label": "TO_RUINS", "direction": 1},
 			{"point": Vector2(1750, 1120), "destination": "workshop", "arrival": Vector2(240, 650), "label": "TO_WORKSHOP", "direction": 1}],
 		"event_point": Vector2(690, 700), "wayfarer": Vector2(480, 620), "exit": Vector2(135, 650), "destination": "crossing", "arrival": Vector2(1730, 500), "exit_label": "TO_CROSSING",
 		"herbs": [Vector2(600, 650), Vector2(1100, 880), Vector2(1500, 750)],
@@ -21,7 +21,7 @@ const REGIONS := {
 		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1800, 1160), "exit_label": "TO_LAKE",
 		"extra_exits": [{"point": Vector2(1800, 420), "destination": "waterworks", "arrival": Vector2(240, 650), "label": "TO_WATERWORKS", "direction": 1},
 			{"point": Vector2(1780, 1200), "destination": "thicket", "arrival": Vector2(240, 650), "label": "TO_THICKET", "direction": 1}],
-		"warden": Vector2(360, 540), "wright": Vector2(570, 540), "tender": Vector2(520, 870),
+		"warden": Vector2(360, 540), "wright": Vector2(570, 540), "tender": Vector2(520, 870), "mentor": Vector2(780, 700),
 		"herbs": [Vector2(580, 850), Vector2(780, 1080)],
 		"enemies": [["workshop_1", Vector2(1230, 800)], ["workshop_archer", Vector2(1550, 900), "ranged"]],
 		"commission_sites": {"wheel": Vector2(960, 600), "archive": Vector2(1450, 460), "workbench": Vector2(680, 600), "cache": Vector2(1540, 1050)},
@@ -46,6 +46,14 @@ const REGIONS := {
 		"field_sites": {"sluice": Vector2(850, 380), "garden": Vector2(790, 1080), "relay": Vector2(1250, 760)},
 		"extra_camps": [{"point": Vector2(1120, 860), "requires_opened": "field_relay"}],
 		"chests": [{"id": "field_garden_supplies", "point": Vector2(850, 1080), "requires_opened": ["field_garden"], "items": {"herb": 2, "potion": 1}}]
+	},
+	"terrace": {
+		"location": "LOCATION_TERRACE", "description": "REGION_TERRACE", "camp": Vector2(350, 780), "witness": Vector2(440, 600),
+		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1680, 340), "exit_label": "TO_LAKE",
+		"herbs": [Vector2(670, 760), Vector2(1450, 880)],
+		"enemies": [["terrace_watcher", Vector2(1640, 320)], ["terrace_archer", Vector2(1640, 1050), "ranged"]],
+		"story_sites": {"marks": Vector2(1040, 450), "control": Vector2(1380, 650), "shore": Vector2(1160, 820)},
+		"chests": [{"id": "terrace_cache", "point": Vector2(1740, 1080), "requires": ["terrace_archer"], "items": {"coin": 9, "potion": 1}}]
 	},
 	"waterworks": {
 		"indoor": true, "location": "LOCATION_WATERWORKS", "description": "REGION_WATERWORKS", "camp": Vector2(300, 800),

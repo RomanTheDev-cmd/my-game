@@ -1,7 +1,7 @@
 extends RefCounted
 const Regions = preload("res://scripts/world/region_catalog.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
-const KINDS := ["merchant", "keeper", "wayfarer", "warden", "wright", "tender", "tracker", "host"]
+const KINDS := ["merchant", "keeper", "wayfarer", "warden", "wright", "tender", "tracker", "host", "mentor", "witness"]
 
 static func shop_open(minutes: float) -> bool:
 	return Clock.in_hours(Clock.hour(minutes), 7, 21)
@@ -18,9 +18,11 @@ static func destination(region: String, kind: String, minutes: float, aid_stage:
 	elif region == "lake" and kind == "wayfarer" and aid_stage == 2 and Clock.in_hours(hour, 18, 7):
 		return Vector2(420, 610)
 	elif region == "workshop" and not Clock.in_hours(hour, 7, 21):
-		return {"warden": Vector2(450, 740), "wright": Vector2(540, 740), "tender": Vector2(470, 800)}.get(kind, point)
+		return {"warden": Vector2(450, 740), "wright": Vector2(540, 740), "tender": Vector2(470, 800), "mentor": Vector2(740, 760)}.get(kind, point)
 	if region == "thicket" and kind == "tracker" and not Clock.in_hours(hour, 7, 21): return Vector2(420, 790)
 	if region == "haven" and kind == "host" and not Clock.in_hours(hour, 7, 21): return Vector2(470, 780)
+	if region == "workshop" and kind == "mentor" and not Clock.in_hours(hour, 7, 21): return Vector2(740, 760)
+	if region == "terrace" and kind == "witness" and not Clock.in_hours(hour, 7, 21): return Vector2(460, 790)
 	return point
 
 static func valid_point(value: Variant) -> bool:

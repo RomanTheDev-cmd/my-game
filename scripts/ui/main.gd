@@ -6,6 +6,7 @@ const PackScreen = preload("res://scripts/ui/pack_screen.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const NatureScreen = preload("res://scripts/ui/nature_screen.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
+const CampaignScreen = preload("res://scripts/ui/campaign_screen.gd")
 const FieldScreen = preload("res://scripts/ui/field_screen.gd")
 const CommunityScreen = preload("res://scripts/ui/community_screen.gd")
 const TrialScreen = preload("res://scripts/ui/trial_screen.gd")
@@ -299,6 +300,7 @@ func show_journal() -> void:
 	if Session.aid_quest > 0:
 		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	CampaignScreen.journal(self, contents)
 	FieldScreen.journal(self, contents)
 	CommunityScreen.journal(self, contents)
 	PackScreen.journal(self, contents)
@@ -323,10 +325,13 @@ func show_journal() -> void:
 	_button("BACK", resume).grab_focus()
 
 func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void:
-	var role := kind.trim_prefix("commission:").trim_prefix("reaction:").trim_prefix("community:")
+	var role := kind.trim_prefix("commission:").trim_prefix("reaction:").trim_prefix("community:").trim_prefix("story:")
 	if kind == "merchant_closed": role = "merchant"
 	if not bypass_reaction and DialogueRules.GROUPS.has(role) and DialogueRules.context(Session.nature) != "":
 		DialogueScreen.show_page(self, role, kind if not kind.begins_with("reaction:") else "")
+		return
+	if kind in ["mentor", "witness"] or kind.begins_with("story:"):
+		CampaignScreen.show_page(self, kind.trim_prefix("story:"))
 		return
 	if kind.begins_with("field:"):
 		FieldScreen.show_page(self, kind.trim_prefix("field:"))
@@ -380,6 +385,7 @@ func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void
 		_button("NATURE_CURE_TITLE", show_nature.bind("keeper")).name = "nature_keeper"
 	if "werewolf" in Session.nature.history:
 		_button("PACK_TITLE", show_pack.bind("keeper")).name = "pack_keeper"
+	CampaignScreen.entry(self, screen)
 	CommunityScreen.entry(self, "keeper", screen)
 	_button("LATER" if Session.quest == 0 else "CLOSE", resume)
 	_focus_first()
@@ -508,6 +514,8 @@ func update_hud() -> void:
 	if community_stage in [1, 2, 3]: quest_label.text = tr("COMMUNITY_HUD_%d" % community_stage)
 	var field_stage := FieldScreen.Rules.stage(Session.gathered, Session.opened)
 	if field_stage in [1, 2]: quest_label.text = tr("FIELD_HUD_%d" % field_stage)
+	var story_stage := CampaignScreen.Rules.stage(Session.gathered, Session.opened)
+	if story_stage in [1, 2, 3, 4]: quest_label.text = tr("STORY_HUD_%d" % story_stage)
 	if is_instance_valid(world.boss) and world.boss.awaiting_record:
 		quest_label.text = tr("TRIAL_RECORD_HELP")
 	var near: String = world.nearby_key()

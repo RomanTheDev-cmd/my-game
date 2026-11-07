@@ -37,6 +37,9 @@ func _draw() -> void:
 		_box(Rect2(1090, 130, 90, 1060), Color("507c88"))
 		for y in [340, 620, 990]:
 			_box(Rect2(1080, y - 25, 110, 50), Color("c0b598"))
+	if region == "terrace":
+		for rect in [Rect2(740, 160, 600, 260), Rect2(900, 940, 550, 230)]: _box(rect, Color("507c88"))
+		draw_line(project(Vector2(120, 650)), project(Vector2(1760, 650)), Color("aa9f7e"), 7)
 	if region == "haven":
 		_box(Rect2(900, 0, 80, 470), Color("507c88"))
 		_box(Rect2(900, 750, 80, 530), Color("507c88"))
@@ -64,7 +67,7 @@ func _draw() -> void:
 		draw_circle(keeper, 3, Color("e9e1ce"))
 	if definition.has("wayfarer"):
 		draw_circle(project(npcs.get("wayfarer", definition.wayfarer)), 3, Color("e9e1ce"))
-	for kind in ["warden", "wright", "tender", "tracker", "host"]:
+	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness"]:
 		if npcs.has(kind):
 			draw_circle(project(npcs[kind]), 3, Color("d5d7af"))
 	var player := project(player_position)

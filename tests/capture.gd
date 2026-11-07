@@ -572,5 +572,49 @@ func capture() -> void:
 	for i in 3: await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/field_report.png")
+	load("res://tests/support/campaign_fixture.gd").ready(session_for_skills)
+	session_for_skills.region = "workshop"
+	session_for_skills.arrival = Vector2(780, 700)
+	game._build_world()
+	game.resume()
+	for i in 3: await process_frame
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	game.world.player.position = game.world.npcs.mentor.position
+	game.world.interact()
+	await shot("campaign_offer")
+	game.world.campaign_action("greet")
+	game.world.campaign_action("accept")
+	session_for_skills.region = "terrace"
+	session_for_skills.arrival = Vector2(1040, 650)
+	game._build_world()
+	game.resume()
+	for i in 3: await process_frame
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	await shot("campaign_terrace")
+	game.show_map()
+	await shot("campaign_map")
+	game.resume()
+	game.world.player.position = game.world.npcs.witness.position
+	game.world.interact()
+	await shot("campaign_witness")
+	game.world.campaign_action("hear")
+	game.resume()
+	game.world.player.position = game.world.definition.story_sites.marks
+	game.world.interact()
+	await shot("campaign_observation")
+	game.world.campaign_action("inspect")
+	game.resume()
+	game.world.player.position = game.world.definition.story_sites.control
+	game.world.interact()
+	game.screen.find_child("story_turn_c", true, false).pressed.emit()
+	await shot("campaign_controls")
+	game.resume()
+	await shot("campaign_device")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)
+func shot(file: String) -> void:
+	for i in 4: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/" + file + ".png")
