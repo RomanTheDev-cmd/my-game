@@ -1,9 +1,20 @@
 extends "res://scripts/world/landscape.gd"
 const WALLS := [Rect2(-30, -30, 1980, 30), Rect2(-30, 1280, 1980, 30), Rect2(-30, 0, 30, 1280), Rect2(1920, 0, 30, 1280),
-	Rect2(900, 0, 80, 470), Rect2(900, 750, 80, 530), Rect2(340, 450, 220, 70), Rect2(620, 820, 160, 60), Rect2(310, 280, 220, 100), Rect2(1200, 200, 240, 100),
+	Rect2(340, 450, 220, 70), Rect2(620, 820, 160, 60), Rect2(310, 280, 220, 100), Rect2(1200, 200, 240, 100),
 	Rect2(550, 950, 180, 45), Rect2(1190, 1040, 220, 45), Rect2(1730, 550, 60, 240)]
+const BANKS := [Rect2(900, 0, 80, 330), Rect2(900, 430, 80, 40), Rect2(900, 750, 80, 530)]
 func _ready() -> void:
-	for rect in WALLS: _obstacle(rect)
+	for rect in WALLS + BANKS: _obstacle(rect)
+	if "field_sluice" not in Session.opened:
+		var body := StaticBody2D.new()
+		body.position = Vector2(940, 380)
+		body.set_meta("field_gate", "field_sluice")
+		var collider := CollisionShape2D.new()
+		var box := RectangleShape2D.new()
+		box.size = Vector2(80, 100)
+		collider.shape = box
+		body.add_child(collider)
+		get_parent().add_child(body)
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, 1920, 1280), Color("374e46"))
 	var rng := RandomNumberGenerator.new()
@@ -13,11 +24,15 @@ func _draw() -> void:
 	draw_rect(Rect2(0, 610, 1920, 80), Color("8c8776"))
 	draw_rect(Rect2(670, 400, 100, 230), Color("7d7f69"))
 	draw_rect(Rect2(1280, 650, 100, 250), Color("7d7f69"))
-	for rect in [WALLS[4], WALLS[5]]:
+	for rect in BANKS:
 		draw_rect(rect.grow(9), Color("727e71"))
 		draw_rect(rect, Color("2b555e"))
+	if "field_sluice" in Session.opened:
+		for y in range(334, 431, 12): draw_line(Vector2(885, y), Vector2(995, y), Color("baac89"), 6)
+	else: draw_rect(Rect2(900, 330, 80, 100), Color("2b555e"))
+	if "field_relay" in Session.opened: _camp(Vector2(1120, 860))
 	for y in range(480, 750, 18): draw_line(Vector2(885, y), Vector2(995, y), Color("b4a787"), 6)
-	for rect in WALLS.slice(6):
+	for rect in WALLS.slice(4):
 		draw_rect(rect.grow(4), Color("293d39"))
 		draw_rect(rect, Color("7f8a7e"))
 		draw_rect(Rect2(rect.position, Vector2(rect.size.x, 12)), Color("aca98e"))

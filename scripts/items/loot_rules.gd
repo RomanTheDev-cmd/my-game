@@ -4,6 +4,8 @@ const Gear = preload("res://scripts/items/equipment_rules.gd")
 static func claim(chest: Dictionary, inventory: Dictionary, owned: Array, opened: Array, defeated: Array) -> Dictionary:
 	if chest.get("id", "") == "" or chest.id in opened:
 		return {}
+	for required in chest.get("requires_opened", []):
+		if required not in opened: return {}
 	for required in chest.get("requires", []):
 		if required not in defeated:
 			return {}

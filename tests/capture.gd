@@ -1,5 +1,6 @@
 extends SceneTree
 const PackFixture = preload("res://tests/support/pack_fixture.gd")
+const FieldFixture = preload("res://tests/support/field_fixture.gd")
 const NatureFixture = preload("res://tests/support/nature_fixture.gd")
 const TestExit = preload("res://tests/support/test_exit.gd")
 
@@ -514,5 +515,62 @@ func capture() -> void:
 	for i in 20: await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/learned_ward.png")
+	FieldFixture.ready(session_for_skills)
+	session_for_skills.region = "haven"
+	session_for_skills.arrival = Vector2(440, 600)
+	session_for_skills.xp = 840
+	session_for_skills.skills = {"mending": 2, "aegis": 2}
+	game._build_world()
+	game.resume()
+	for i in 3: await physics_frame
+	var field_page = load("res://scripts/ui/field_screen.gd")
+	game.world.player.position = game.world.npcs.host.position
+	field_page.show_page(game, "host")
+	for i in 3: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/field_offer.png")
+	game.resume()
+	game.world.field_action("accept", "accept")
+	game.world.player.position = game.world.definition.field_sites.sluice
+	game.world.interact()
+	for i in 3: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/field_device.png")
+	game.resume()
+	game.world.field_action("sluice", "frost")
+	for i in 5: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/field_partial.png")
+	game.world.field_action("sluice", "manual")
+	game.world.player.position = Vector2(980, 380)
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/field_crossing.png")
+	game.world.player.position = game.world.definition.field_sites.garden
+	game.world.player.mana = 100
+	game.world.field_action("garden", "heal")
+	for i in 20: await process_frame
+	while game.world.player.magic_cooldown > 0: await process_frame
+	game.world.player.position = game.world.definition.field_sites.relay
+	if not game.world.field_action("relay", "aegis"):
+		printerr("CAPTURE_FIELD_RELAY_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	game.world.player.position = Vector2(1120, 860)
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/field_camp.png")
+	game.world.player.position = Vector2(1210, 860)
+	game.show_map()
+	for i in 3: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/field_map.png")
+	game.resume()
+	game.world.player.position = game.world.npcs.host.position
+	game.world.field_action("report", "report")
+	field_page.show_page(game, "host")
+	for i in 3: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/field_report.png")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)

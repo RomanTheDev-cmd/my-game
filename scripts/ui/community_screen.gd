@@ -1,4 +1,5 @@
 extends RefCounted
+const FieldScreen = preload("res://scripts/ui/field_screen.gd")
 const Rules = preload("res://scripts/factions/community_rules.gd")
 static func text(ui: Node, parent: Node, key: String, size: int = 17) -> Label:
 	var label: Label = ui._label(parent, key, size)
@@ -53,6 +54,7 @@ static func show_page(ui: Node, target: String = "host", confirm: String = "") -
 		var button: Button = ui._button("COMMUNITY_ACTION_" + event.to_upper(), show_page.bind(ui, target, event) if reviewed else _act.bind(ui, event, target), contents)
 		button.name = "community_" + event
 		button.disabled = not ui.world.can_community(event)
+	if target == "host": FieldScreen.entry(ui, contents)
 	ui._button("BACK", ui.resume)
 	ui._focus_first()
 static func _act(ui: Node, event: String, target: String) -> void:

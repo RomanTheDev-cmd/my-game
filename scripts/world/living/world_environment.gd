@@ -2,6 +2,7 @@ extends Node2D
 const Regions = preload("res://scripts/world/region_catalog.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
 const Overlay = preload("res://scripts/world/living/weather_overlay.gd")
+var camp_lights: Dictionary = {}
 var region := "crossing"
 var player: Node2D
 var modulation: CanvasModulate
@@ -25,13 +26,15 @@ func _ready() -> void:
 	if Regions.get_region(region).get("indoor", false):
 		points.append_array([Vector2(580, 540), Vector2(580, 740), Vector2(1140, 430), Vector2(1140, 760), Vector2(1530, 590)])
 	for point in points:
-		_light(point + Vector2(0, -10), Color("f6c88a"), 0.7, 0.9)
+		camp_lights[point] = _light(point + Vector2(0, -10), Color("f6c88a"), 0.7, 0.9)
 	var layer := CanvasLayer.new()
 	layer.layer = 0
 	add_child(layer)
 	var overlay := Overlay.new()
 	overlay.indoor = Regions.get_region(region).get("indoor", false)
 	layer.add_child(overlay)
+	Session.changed.connect(_sync_camps)
+	_sync_camps()
 	_process(0)
 
 func _light(point: Vector2, color: Color, texture_scale: float, energy: float) -> PointLight2D:
@@ -59,3 +62,8 @@ func _process(_delta: float) -> void:
 	hero_light.visible = daylight < 0.85 or Regions.get_region(region).get("indoor", false)
 	if is_instance_valid(player):
 		hero_light.global_position = player.global_position + Vector2(0, -8)
+
+func _sync_camps() -> void:
+	if not is_inside_tree() or region != Session.region: return
+	for point in Regions.camps(region, Session.opened):
+		if not camp_lights.has(point): camp_lights[point] = _light(point + Vector2(0, -10), Color("f6c88a"), 0.7, 0.9)

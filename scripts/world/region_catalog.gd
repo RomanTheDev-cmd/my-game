@@ -42,7 +42,10 @@ const REGIONS := {
 		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(240, 1000), "exit_label": "TO_LAKE",
 		"herbs": [Vector2(610, 820), Vector2(1270, 900)],
 		"enemies": [["haven_1", Vector2(1640, 320)], ["haven_archer", Vector2(1670, 1000), "ranged"]],
-		"community_sites": {"supply": Vector2(720, 420), "route": Vector2(1320, 600), "search": Vector2(1450, 860)}
+		"community_sites": {"supply": Vector2(720, 420), "route": Vector2(1320, 600), "search": Vector2(1450, 860)},
+		"field_sites": {"sluice": Vector2(850, 380), "garden": Vector2(790, 1080), "relay": Vector2(1250, 760)},
+		"extra_camps": [{"point": Vector2(1120, 860), "requires_opened": "field_relay"}],
+		"chests": [{"id": "field_garden_supplies", "point": Vector2(850, 1080), "requires_opened": ["field_garden"], "items": {"herb": 2, "potion": 1}}]
 	},
 	"waterworks": {
 		"indoor": true, "location": "LOCATION_WATERWORKS", "description": "REGION_WATERWORKS", "camp": Vector2(300, 800),
@@ -84,4 +87,13 @@ static func exits(id: String) -> Array:
 	var result := [{"point": region.exit, "destination": region.destination, "arrival": region.arrival,
 		"label": region.exit_label, "direction": 1 if region.exit.x > 960 else -1}]
 	result.append_array(region.get("extra_exits", []))
+	return result
+
+static func camps(id: String, opened: Array) -> Array[Vector2]:
+	var definition := get_region(id)
+	var result: Array[Vector2] = []
+	if definition.is_empty(): return result
+	result.append(definition.camp)
+	for entry in definition.get("extra_camps", []):
+		if entry.requires_opened in opened: result.append(entry.point)
 	return result

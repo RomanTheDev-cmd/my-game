@@ -1,4 +1,5 @@
 extends Node
+const Field = preload("res://scripts/magic/field_rules.gd")
 const Community = preload("res://scripts/factions/community_rules.gd")
 const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
 const Pack = preload("res://scripts/nature/pack_rules.gd")
@@ -474,3 +475,19 @@ func community_event(event: String, position: Vector2, current_vitals: Dictionar
 	apply(data)
 	notice.emit("COMMUNITY_SAVED")
 	return true
+
+func field_event(id: String, method: String, position: Vector2, current_vitals: Dictionary, cooldown: float = 0, recharge: float = 0) -> Dictionary:
+	var result := Field.resolve(nature, skills, gathered, opened, current_vitals, world_state.minutes, id, method, cooldown, recharge)
+	if result.is_empty(): return {}
+	var data := snapshot(position, result.vitals)
+	data.nature = result.nature
+	data.gathered = result.gathered
+	data.opened = result.opened
+	data.world_state.minutes = result.minutes
+	data.xp = mini(100000, xp + result.xp)
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return {}
+	apply(data)
+	notice.emit("FIELD_SAVED")
+	return result

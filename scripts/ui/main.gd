@@ -6,6 +6,7 @@ const PackScreen = preload("res://scripts/ui/pack_screen.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const NatureScreen = preload("res://scripts/ui/nature_screen.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
+const FieldScreen = preload("res://scripts/ui/field_screen.gd")
 const CommunityScreen = preload("res://scripts/ui/community_screen.gd")
 const TrialScreen = preload("res://scripts/ui/trial_screen.gd")
 const CommissionScreen = preload("res://scripts/ui/commission_screen.gd")
@@ -298,6 +299,7 @@ func show_journal() -> void:
 	if Session.aid_quest > 0:
 		var side := _label(contents, "AID_QUEST_%d" % Session.aid_quest, 18)
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	FieldScreen.journal(self, contents)
 	CommunityScreen.journal(self, contents)
 	PackScreen.journal(self, contents)
 	NatureScreen.journal(self, contents)
@@ -325,6 +327,9 @@ func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void
 	if kind == "merchant_closed": role = "merchant"
 	if not bypass_reaction and DialogueRules.GROUPS.has(role) and DialogueRules.context(Session.nature) != "":
 		DialogueScreen.show_page(self, role, kind if not kind.begins_with("reaction:") else "")
+		return
+	if kind.begins_with("field:"):
+		FieldScreen.show_page(self, kind.trim_prefix("field:"))
 		return
 	if kind == "host" or kind.begins_with("community:"):
 		CommunityScreen.show_page(self, "host" if kind == "host" else kind.trim_prefix("community:"))
@@ -501,6 +506,8 @@ func update_hud() -> void:
 		quest_label.text = tr(PackScreen.hint(Session.nature, Session.gathered))
 	var community_stage := CommunityScreen.Rules.stage(Session.gathered)
 	if community_stage in [1, 2, 3]: quest_label.text = tr("COMMUNITY_HUD_%d" % community_stage)
+	var field_stage := FieldScreen.Rules.stage(Session.gathered, Session.opened)
+	if field_stage in [1, 2]: quest_label.text = tr("FIELD_HUD_%d" % field_stage)
 	if is_instance_valid(world.boss) and world.boss.awaiting_record:
 		quest_label.text = tr("TRIAL_RECORD_HELP")
 	var near: String = world.nearby_key()

@@ -1,4 +1,5 @@
 extends RefCounted
+const Field = preload("res://scripts/magic/field_rules.gd")
 const Community = preload("res://scripts/factions/community_rules.gd")
 const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
@@ -134,6 +135,8 @@ static func validate(data: Variant) -> bool:
 	if not data.nature.landing.is_empty() and data.nature.landing.region != data.region: return false
 	if not Nature.quest_valid(data.nature, data.gathered, data.opened): return false
 	if not Community.valid(data.nature, data.gathered, data.opened): return false
+	if not Field.valid(data.gathered, data.opened): return false
+	if data.defeated.any(func(flag): return flag.begins_with("field:") or flag.begins_with("field_")): return false
 	if not Trial.valid(data.gathered, data.defeated, data.opened, int(data.world_state.commission.stage)):
 		return false
 	if int(data.quest) == 2 and data.inventory.get("lantern", 0) != 1:

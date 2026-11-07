@@ -41,6 +41,7 @@ func _draw() -> void:
 		_box(Rect2(900, 0, 80, 470), Color("507c88"))
 		_box(Rect2(900, 750, 80, 530), Color("507c88"))
 		_box(Rect2(885, 470, 110, 280), Color("c0b598"))
+		if "field_sluice" in Session.opened: _box(Rect2(885, 330, 110, 100), Color("c0b598"))
 		draw_line(project(Vector2(0, 650)), project(Vector2(1920, 650)), Color("aa9f7e"), 7)
 	if Regions.get_region(region).get("indoor", false):
 		draw_rect(area, Color("4b5356"))
@@ -50,8 +51,9 @@ func _draw() -> void:
 		elif (Regions.get_region(region).get("indoor", false) and obstacle.rect.position.x >= 80 and obstacle.rect.position.y >= 80 and obstacle.rect.end.x <= 1840 and obstacle.rect.end.y <= 1200) or (obstacle.rect.size.x < 250 and obstacle.rect.size.y < 250):
 			_box(obstacle.rect, Color("9a9d89"))
 	var definition := Regions.get_region(region)
-	var camp := project(definition.camp)
-	draw_rect(Rect2(camp - Vector2(4, 4), Vector2(8, 8)), Color("e9bd77"))
+	for point in Regions.camps(region, Session.opened):
+		var camp := project(point)
+		draw_rect(Rect2(camp - Vector2(4, 4), Vector2(8, 8)), Color("e9bd77"))
 	for portal in Regions.exits(region):
 		var exit_point := project(portal.point)
 		draw_rect(Rect2(exit_point - Vector2(3, 6), Vector2(6, 12)), Color("c6d9cd"))

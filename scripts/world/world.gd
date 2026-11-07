@@ -1,4 +1,6 @@
 extends Node2D
+const Field = preload("res://scripts/magic/field_rules.gd")
+const FieldDevice = preload("res://scripts/world/field_device.gd")
 const Magic = preload("res://scripts/magic/magic_rules.gd")
 const Community = preload("res://scripts/factions/community_rules.gd")
 const Haven = preload("res://scripts/world/haven_landscape.gd")
@@ -33,6 +35,7 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var field_devices: Dictionary = {}
 var community_delivery: Node2D
 var community_markers: Dictionary = {}
 var pack_markers: Dictionary = {}
@@ -67,6 +70,12 @@ func _ready() -> void:
 	landscape.z_index = -2
 	add_child(landscape)
 	_build_commission_objects()
+	for id in definition.get("field_sites", {}):
+		var device := FieldDevice.new()
+		device.kind = id
+		device.position = definition.field_sites[id]
+		add_child(device)
+		field_devices[id] = device
 	if Session.region == "haven":
 		community_delivery = CommissionMarker.new()
 		community_delivery.kind = "cache"
@@ -161,6 +170,8 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_field_environment)
+	_update_field_environment()
 	Session.changed.connect(_update_community_environment)
 	_update_community_environment()
 	Session.changed.connect(_update_flight_gates)
@@ -230,6 +241,8 @@ func nearby_key() -> String:
 	for kind in ["warden", "wright", "tender", "tracker", "host"]:
 		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
 			return kind.to_upper() + "_NAME"
+	for id in field_devices:
+		if player.position.distance_to(field_devices[id].position) < 45: return "FIELD_SITE_" + id.to_upper()
 	for target in community_markers:
 		if player.position.distance_to(community_markers[target].position) < 45: return "COMMUNITY_SITE_" + target.to_upper()
 	for target in pack_markers:
@@ -240,7 +253,7 @@ func nearby_key() -> String:
 	for marker in salvage_markers:
 		if marker.visible and player.position.distance_to(marker.position) < 30:
 			return "SCRAP"
-	if player.position.distance_to(definition.camp) < 45:
+	if Regions.camps(Session.region, Session.opened).any(func(point): return player.position.distance_to(point) < 45):
 		return "REST"
 	if lantern.visible and player.position.distance_to(lantern.position) < 40:
 		return "LANTERN"
@@ -250,7 +263,7 @@ func nearby_key() -> String:
 		if herb.visible and player.position.distance_to(herb.position) < 30:
 			return "HERB"
 	for chest in chests:
-		if chest.get_meta("definition").id not in Session.opened and player.position.distance_to(chest.position) < 40:
+		if chest.visible and chest.get_meta("definition").id not in Session.opened and player.position.distance_to(chest.position) < 40:
 			return "CHEST"
 	for portal in Regions.exits(Session.region):
 		if player.position.distance_to(portal.point) < 55:
@@ -258,8 +271,12 @@ func nearby_key() -> String:
 	return ""
 
 func interact() -> void:
+	_update_tracking()
 	_sync_context()
 	var key := nearby_key()
+	if key.begins_with("FIELD_SITE_"):
+		dialog_requested.emit("field:" + key.trim_prefix("FIELD_SITE_").to_lower())
+		return
 	if key == "HOST_NAME" or key.begins_with("COMMUNITY_SITE_"):
 		if key == "HOST_NAME" and Session.nature.form != "human": dialog_requested.emit("reaction:host")
 		else: dialog_requested.emit("community:" + ("host" if key == "HOST_NAME" else key.trim_prefix("COMMUNITY_SITE_").to_lower()))
@@ -321,7 +338,7 @@ func interact() -> void:
 				Session.notice.emit("CHECKPOINT_UNSAFE")
 				return
 			for chest in chests:
-				if player.position.distance_to(chest.position) < 40 and chest.get_meta("definition").id not in Session.opened:
+				if chest.visible and player.position.distance_to(chest.position) < 40 and chest.get_meta("definition").id not in Session.opened:
 					if Session.claim_chest(chest.get_meta("definition"), player.position, player_vitals()):
 						chest.modulate = Color("6d7770")
 					return
@@ -438,7 +455,7 @@ func _sync_context() -> void:
 			Session.world_state.npcs[Session.region + ":" + npc.kind] = [npc.position.x, npc.position.y]
 
 func can_wait() -> bool:
-	return Session.nature.form == "human" and player.health > 0 and player.position.distance_to(definition.camp) < 45 and safe_to_rest()
+	return Session.nature.form == "human" and player.health > 0 and Regions.camps(Session.region, Session.opened).any(func(point): return player.position.distance_to(point) < 45) and safe_to_rest()
 
 func wait(minutes: float) -> bool:
 	if not can_wait():
@@ -691,3 +708,40 @@ func learn_skill(id: String) -> bool:
 		return false
 	_sync_context()
 	return Session.learn_skill(id, player.position, player_vitals())
+
+func can_field(id: String, method: String) -> bool:
+	if Session.region != "haven" or player.health <= 0 or player.dodge_time > 0 or not safe_to_rest(): return false
+	var point: Vector2 = npcs.host.position if id in ["accept", "report"] else definition.get("field_sites", {}).get(id, Vector2.INF)
+	if player.position.distance_to(point) >= 48 or not navigation.segment_clear(player.position, point): return false
+	return not Field.resolve(Session.nature, Session.skills, Session.gathered, Session.opened, player_vitals(), Session.world_state.minutes, id, method, player.magic_cooldown, player.shield_recharge).is_empty()
+func field_action(id: String, method: String) -> bool:
+	if not can_field(id, method): return false
+	_sync_context()
+	var result := Session.field_event(id, method, player.position, player_vitals(), player.magic_cooldown, player.shield_recharge)
+	if result.is_empty(): return false
+	player.mana = Session.vitals.mana
+	player.stamina = Session.vitals.stamina
+	player.advance_timers(result.elapsed)
+	player.magic_cooldown = maxf(player.magic_cooldown, result.cooldown)
+	player.shield_recharge = maxf(player.shield_recharge, result.recharge)
+	if field_devices.has(id):
+		field_devices[id].pulse(method)
+		Sound.play_at("magic" if method != "manual" else "collect", player.position)
+	player.stats_changed.emit()
+	return true
+func _update_field_environment() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	var changed := false
+	for body in get_children():
+		if body is StaticBody2D and body.has_meta("field_gate") and body.get_meta("field_gate") in Session.opened:
+			remove_child(body)
+			body.queue_free()
+			changed = true
+	if changed: navigation.configure(self)
+	for id in field_devices:
+		field_devices[id].progress = Field.progress(Session.gathered, id)
+		field_devices[id].queue_redraw()
+	for chest in chests:
+		var entry: Dictionary = chest.get_meta("definition")
+		if entry.has("requires_opened"): chest.visible = entry.requires_opened.all(func(flag): return flag in Session.opened)
+	landscape.queue_redraw()

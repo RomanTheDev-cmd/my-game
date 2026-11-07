@@ -114,7 +114,13 @@ func _process(delta: float) -> void:
 	for voice in voices:
 		if not Session.running:
 			voice.stop()
-	fire_voice.position = Regions.get_region(Session.region).camp
+	var camera := get_viewport().get_camera_2d()
+	var origin: Vector2 = camera.global_position if camera != null else Session.arrival
+	var camps := Regions.camps(Session.region, Session.opened)
+	var nearest: Vector2 = camps[0]
+	for point in camps:
+		if origin.distance_squared_to(point) < origin.distance_squared_to(nearest): nearest = point
+	fire_voice.position = nearest
 	if Session.running and not fire_voice.playing:
 		fire_voice.play()
 	elif not Session.running:

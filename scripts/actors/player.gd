@@ -66,17 +66,7 @@ func _physics_process(delta: float) -> void:
 	if health <= 0:
 		return
 	sync_form_geometry()
-	scent_time = maxf(0, scent_time - delta)
-	nature_cooldown = maxf(0, nature_cooldown - delta)
-	magic_cooldown = maxf(0, magic_cooldown - delta)
-	shield_recharge = maxf(0, shield_recharge - delta)
-	shield_time = maxf(0, shield_time - delta)
-	if shield_time == 0:
-		shield_strength = 0
-	attack_time = maxf(0, attack_time - delta)
-	attack_cooldown = maxf(0, attack_cooldown - delta)
-	dodge_time = maxf(0, dodge_time - delta)
-	hurt_time = maxf(0, hurt_time - delta)
+	advance_timers(delta)
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if direction.length() > 0.15:
 		facing = direction.normalized()
@@ -130,6 +120,19 @@ func _physics_process(delta: float) -> void:
 	modulate = modulate.lerp(Color.WHITE, delta * 8)
 	stats_changed.emit()
 	queue_redraw()
+
+func advance_timers(delta: float) -> void:
+	scent_time = maxf(0, scent_time - delta)
+	nature_cooldown = maxf(0, nature_cooldown - delta)
+	magic_cooldown = maxf(0, magic_cooldown - delta)
+	shield_recharge = maxf(0, shield_recharge - delta)
+	shield_time = maxf(0, shield_time - delta)
+	if shield_time == 0:
+		shield_strength = 0
+	attack_time = maxf(0, attack_time - delta)
+	attack_cooldown = maxf(0, attack_cooldown - delta)
+	dodge_time = maxf(0, dodge_time - delta)
+	hurt_time = maxf(0, hurt_time - delta)
 
 func receive_damage(amount: float) -> void:
 	if health <= 0 or hurt_time > 0:

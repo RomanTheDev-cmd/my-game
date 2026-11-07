@@ -1,0 +1,13 @@
+{
+  "status": "first playable environmental magic assignment, full campaign pending",
+  "rules": "scripts/magic/field_rules.gd",
+  "principles": [
+    "optional after community help",
+    "manual completion available to every nature",
+    "same actual learned spell profile as combat",
+    "magic targets place instead of caster",
+    "progress and permanent geography recorded before costs applied",
+    "no healing or mana refill from manual work",
+    "no loss of completed work after nature return"
+  ]
+}
