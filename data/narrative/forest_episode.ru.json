@@ -1,0 +1,20 @@
+{
+  "status": "forest_history playable section",
+  "source_sequences": [
+    "regional_hub",
+    "forest_history"
+  ],
+  "rules": "scripts/quests/forest_rules.gd",
+  "character": "Рунель помогает лично и сохраняет право на согласие; колено ограничивает темп, не дееспособность.",
+  "principles": [
+    "free regional order after accepted commitment",
+    "lake method/report remembered without mandatory lake gate",
+    "actual moving guide and sequential shared road work",
+    "no companion death or irreversible separation",
+    "human work and optional common briefing",
+    "consented blood aid has equal non-blood alternative",
+    "actual wolf voice with resource cost",
+    "permanent passage and two visible community outcomes",
+    "same v9, recorded NPC position, atomic costs and progress"
+  ]
+}

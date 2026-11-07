@@ -28,6 +28,7 @@ const REGIONS := {
 		"salvage": [{"id": "workshop:scrap_1", "point": Vector2(730, 450)}, {"id": "workshop:scrap_2", "point": Vector2(860, 900)}, {"id": "workshop:scrap_3", "point": Vector2(1320, 360)}]
 	},
 	"thicket": {
+		"extra_exits": [{"point": Vector2(1750, 620), "destination": "woodroad", "arrival": Vector2(240, 620), "label": "TO_WOODROAD", "direction": 1}],
 		"location": "LOCATION_THICKET", "description": "REGION_THICKET", "camp": Vector2(350, 760), "tracker": Vector2(450, 600),
 		"exit": Vector2(135, 650), "destination": "workshop", "arrival": Vector2(1820, 1190), "exit_label": "TO_WORKSHOP",
 		"herbs": [Vector2(610, 850), Vector2(1250, 1080)],
@@ -54,6 +55,14 @@ const REGIONS := {
 		"enemies": [["terrace_watcher", Vector2(1640, 320)], ["terrace_archer", Vector2(1640, 1050), "ranged"]],
 		"story_sites": {"marks": Vector2(1040, 450), "control": Vector2(1380, 650), "shore": Vector2(1160, 820)},
 		"chests": [{"id": "terrace_cache", "point": Vector2(1740, 1080), "requires": ["terrace_archer"], "items": {"coin": 9, "potion": 1}}]
+	},
+	"woodroad": {
+		"location": "LOCATION_WOODROAD", "description": "REGION_WOODROAD", "camp": Vector2(390, 800), "roadkeeper": Vector2(430, 620),
+		"exit": Vector2(135, 620), "destination": "thicket", "arrival": Vector2(1680, 620), "exit_label": "TO_THICKET",
+		"herbs": [Vector2(590, 870), Vector2(1740, 1020)],
+		"enemies": [["woodroad_guard", Vector2(1750, 1060), "heavy"]],
+		"forest_sites": [Vector2(700, 620), Vector2(1020, 780), Vector2(1380, 620)],
+		"chests": [{"id": "woodroad_cache", "point": Vector2(1640, 650), "requires_opened": ["forest_passage"], "items": {"herb": 2, "potion": 1}}]
 	},
 	"waterworks": {
 		"indoor": true, "location": "LOCATION_WATERWORKS", "description": "REGION_WATERWORKS", "camp": Vector2(300, 800),

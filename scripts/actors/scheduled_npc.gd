@@ -6,6 +6,7 @@ var sprite: Sprite2D
 var path := PackedVector2Array()
 var path_index := 0
 var path_timer := 0.0
+var walk_speed := 35.0
 
 func _ready() -> void:
 	collision_layer = 8
@@ -19,7 +20,7 @@ func _ready() -> void:
 	sprite.texture = preload("res://assets/sprites/keeper.png") if kind == "keeper" else preload("res://assets/sprites/wayfarer.png")
 	sprite.position.y = -12
 	add_child(sprite)
-	sprite.modulate = {"warden": Color("99b6c5"), "wright": Color("d7bb8b"), "tender": Color("a5c9a5"), "tracker": Color("adc49f"), "host": Color("bcbfa5"), "mentor": Color("bea786"), "witness": Color("b7c8bb")}.get(kind, Color.WHITE)
+	sprite.modulate = {"warden": Color("99b6c5"), "wright": Color("d7bb8b"), "tender": Color("a5c9a5"), "tracker": Color("adc49f"), "host": Color("bcbfa5"), "roadkeeper": Color("a9b78a"), "mentor": Color("bea786"), "witness": Color("b7c8bb")}.get(kind, Color.WHITE)
 
 func set_destination(point: Vector2) -> void:
 	if point.distance_to(destination) > 1:
@@ -39,12 +40,15 @@ func _physics_process(delta: float) -> void:
 		path_timer = 0.8
 	while path_index < path.size() and position.distance_to(path[path_index]) < 4:
 		path_index += 1
-	velocity = (path[path_index] - position).normalized() * 35 if path_index < path.size() else Vector2.ZERO
+	velocity = (path[path_index] - position).normalized() * walk_speed if path_index < path.size() else Vector2.ZERO
 	move_and_slide()
 	if velocity.x != 0:
 		sprite.flip_h = velocity.x < 0
 
 func _draw() -> void:
+	if kind == "roadkeeper":
+		draw_line(Vector2(11, -30), Vector2(11, 2), Color("aa9b76"), 3)
+		draw_rect(Rect2(-13, -21, 26, 5), Color("687b5a"))
 	if kind == "mentor":
 		draw_line(Vector2(8, -22), Vector2(8, 0), Color("987b56"), 3)
 		draw_rect(Rect2(4, -24, 11, 5), Color("bbc5ac"))

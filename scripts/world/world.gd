@@ -1,4 +1,7 @@
 extends Node2D
+const Forest = preload("res://scripts/quests/forest_rules.gd")
+const Woodroad = preload("res://scripts/world/woodroad_landscape.gd")
+const ForestSign = preload("res://scripts/world/forest_sign.gd")
 const Campaign = preload("res://scripts/quests/campaign_rules.gd")
 const Terrace = preload("res://scripts/world/terrace_landscape.gd")
 const CampaignDevice = preload("res://scripts/world/campaign_device.gd")
@@ -38,6 +41,7 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var forest_signs: Array[Node2D] = []
 var campaign_devices: Dictionary = {}
 var field_devices: Dictionary = {}
 var community_delivery: Node2D
@@ -69,11 +73,16 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
+	landscape = Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
 	_build_commission_objects()
+	for point in definition.get("forest_sites", []):
+		var sign := ForestSign.new()
+		sign.position = point
+		add_child(sign)
+		forest_signs.append(sign)
 	for id in definition.get("story_sites", {}):
 		var device := CampaignDevice.new()
 		device.kind = id
@@ -180,6 +189,8 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_forest_environment)
+	_update_forest_environment()
 	Session.changed.connect(_update_campaign_environment)
 	_update_campaign_environment()
 	Session.changed.connect(_update_field_environment)
@@ -250,9 +261,11 @@ func nearby_key() -> String:
 		return "KEEPER_NAME"
 	if wayfarer.visible and player.position.distance_to(wayfarer.position) < 45:
 		return "AID_NAME"
-	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness"]:
+	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper"]:
 		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
 			return kind.to_upper() + "_NAME"
+	for i in forest_signs.size():
+		if player.position.distance_to(forest_signs[i].position) < 45: return "FOREST_SITE_%d" % i
 	for id in campaign_devices:
 		if player.position.distance_to(campaign_devices[id].position) < 45: return "STORY_SITE_" + id.to_upper()
 	for id in field_devices:
@@ -288,6 +301,10 @@ func interact() -> void:
 	_update_tracking()
 	_sync_context()
 	var key := nearby_key()
+	if key == "ROADKEEPER_NAME" or key.begins_with("FOREST_SITE_"):
+		if key == "ROADKEEPER_NAME" and Session.nature.form != "human": dialog_requested.emit("reaction:roadkeeper")
+		else: dialog_requested.emit("forest:roadkeeper" if key == "ROADKEEPER_NAME" else "forest:" + key.trim_prefix("FOREST_SITE_"))
+		return
 	if key in ["MENTOR_NAME", "WITNESS_NAME"] or key.begins_with("STORY_SITE_"):
 		var target := key.trim_suffix("_NAME").to_lower() if key.ends_with("_NAME") else key.trim_prefix("STORY_SITE_").to_lower()
 		if key.ends_with("_NAME") and Session.nature.form != "human": dialog_requested.emit("reaction:" + target)
@@ -466,6 +483,9 @@ func _spawn_npc(kind: String) -> CharacterBody2D:
 func _update_npcs() -> void:
 	for npc in npcs.values():
 		if is_instance_valid(npc) and npc.visible:
+			if npc.kind == "roadkeeper" and Forest.stage(Session.gathered, Session.opened) > 0:
+				_update_escort(npc)
+				continue
 			npc.set_destination(Schedule.destination(Session.region, npc.kind, Session.world_state.minutes, Session.aid_quest))
 
 func _sync_context() -> void:
@@ -785,3 +805,54 @@ func _update_campaign_environment() -> void:
 		device.settings = Campaign.positions(Session.gathered)
 		device.resolved = Campaign.stage(Session.gathered, Session.opened) >= 4
 		device.queue_redraw()
+
+func _update_escort(npc: CharacterBody2D) -> void:
+	var current := Forest.stage(Session.gathered, Session.opened)
+	if current == 3:
+		npc.set_destination(Vector2(430, 780) if Forest.OUTCOMES[0] in Session.gathered else Vector2(1640, 620))
+		return
+	if current == 2:
+		npc.set_destination(Forest.POINTS[2] - Vector2(65, 0))
+		return
+	npc.walk_speed = 90 if Session.gathered.any(func(flag): return flag in Forest.AIDS) else 70
+	var distance := npc.position.distance_to(player.position)
+	if player.health <= 0 or not safe_to_rest() or distance > 220 or distance < 65:
+		npc.set_destination(npc.position)
+	elif npc.destination.distance_to(player.position) > 30:
+		npc.set_destination(player.position)
+
+func can_forest(event: String) -> bool:
+	if Session.region != "woodroad" or player.health <= 0 or player.dodge_time > 0 or not safe_to_rest(): return false
+	var point: Vector2 = npcs.roadkeeper.position
+	if event in ["work", "howl"]:
+		var step := Forest.progress(Session.gathered)
+		if step >= 3: return false
+		point = Forest.POINTS[step]
+		if npcs.roadkeeper.position.distance_to(point) > 90 or not navigation.segment_clear(point, npcs.roadkeeper.position): return false
+	if player.position.distance_to(point) >= 48 or not navigation.segment_clear(player.position, point): return false
+	return not Forest.resolve(Session.nature, Session.gathered, Session.opened, Session.inventory, player_vitals(), event).is_empty()
+
+func forest_action(event: String) -> bool:
+	if not can_forest(event): return false
+	_sync_context()
+	if not Session.forest_event(event, player.position, player_vitals()): return false
+	player.stamina = Session.vitals.stamina
+	player.mana = Session.vitals.mana
+	player.stats_changed.emit()
+	Sound.play_at("collect", player.position)
+	return true
+
+func _update_forest_environment() -> void:
+	if not is_inside_tree() or Session.region != "woodroad" or landscape.region != Session.region: return
+	var removed := false
+	for body in get_children():
+		if body is StaticBody2D and body.has_meta("forest_gate") and Forest.PASSAGE in Session.opened:
+			remove_child(body)
+			body.queue_free()
+			removed = true
+	if removed: navigation.configure(self)
+	for i in forest_signs.size():
+		forest_signs[i].repaired = i < Forest.progress(Session.gathered)
+		forest_signs[i].outcome = "commons" if Forest.OUTCOMES[0] in Session.gathered else ("watch" if Forest.OUTCOMES[1] in Session.gathered else "")
+		forest_signs[i].queue_redraw()
+	landscape.queue_redraw()

@@ -1,4 +1,5 @@
 extends RefCounted
+const Forest = preload("res://scripts/quests/forest_rules.gd")
 const Campaign = preload("res://scripts/quests/campaign_rules.gd")
 const Field = preload("res://scripts/magic/field_rules.gd")
 const Community = preload("res://scripts/factions/community_rules.gd")
@@ -136,6 +137,8 @@ static func validate(data: Variant) -> bool:
 	if not data.nature.landing.is_empty() and data.nature.landing.region != data.region: return false
 	if not Nature.quest_valid(data.nature, data.gathered, data.opened): return false
 	if not Community.valid(data.nature, data.gathered, data.opened): return false
+	if not Forest.valid(data.nature, data.gathered, data.opened): return false
+	if data.defeated.any(func(flag): return flag.begins_with("forest:") or flag.begins_with("forest_")): return false
 	if not Campaign.valid(data.nature, int(data.quest), data.gathered, data.opened, data.inventory): return false
 	if data.defeated.any(func(flag): return flag.begins_with("story:") or flag.begins_with("story_")): return false
 	if not Field.valid(data.gathered, data.opened): return false

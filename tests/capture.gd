@@ -612,9 +612,77 @@ func capture() -> void:
 	await shot("campaign_controls")
 	game.resume()
 	await shot("campaign_device")
+	var forest_fixture = load("res://tests/support/forest_fixture.gd")
+	var forest_rules = load("res://scripts/quests/forest_rules.gd")
+	forest_fixture.ready(session_for_skills)
+	session_for_skills.region = "woodroad"
+	session_for_skills.arrival = Vector2(430, 620)
+	game._build_world()
+	game.resume()
+	for i in 3: await process_frame
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	game.world.npcs.roadkeeper.set_physics_process(false)
+	game.world.player.position = game.world.npcs.roadkeeper.position
+	game.world.interact()
+	await shot("forest_offer")
+	game.world.forest_action("accept")
+	game.resume()
+	game.world.forest_action("aid_brief")
+	game.world.player.position = Vector2(850, 620)
+	await shot("forest_road", game.get_viewport().get_camera_2d())
+	game.show_map()
+	await shot("forest_map")
+	game.resume()
+	game.world.player.position = Vector2(1455, 645)
+	await shot("forest_gate_closed", game.get_viewport().get_camera_2d())
+	for i in 3:
+		game.world.player.position = forest_rules.POINTS[i]
+		game.world.npcs.roadkeeper.position = forest_rules.POINTS[i] - Vector2(70, 0)
+		game.world.interact()
+		if i == 0: await shot("forest_work")
+		if not game.world.forest_action("work"):
+			printerr("CAPTURE_FOREST_WORK_FAILED")
+			await TestExit.finish(self, 1)
+			return
+		game.resume()
+	game.world.player.position = Vector2(1455, 645)
+	await shot("forest_gate_open", game.get_viewport().get_camera_2d())
+	game.world.player.position = game.world.npcs.roadkeeper.position
+	game.world.interact()
+	game.screen.find_child("forest_watch", true, false).pressed.emit()
+	await shot("forest_outcome_review")
+	game.world.forest_action("watch")
+	game.resume()
+	game.world.interact()
+	await shot("forest_outcome")
+	forest_fixture.ready(session_for_skills, "vampire", true, "provision", "blood")
+	session_for_skills.region = "woodroad"
+	session_for_skills.arrival = Vector2(430, 620)
+	game._build_world()
+	game.resume()
+	for i in 3: await process_frame
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	game.world.npcs.roadkeeper.set_physics_process(false)
+	game.world.player.position = game.world.npcs.roadkeeper.position
+	game.world.interact()
+	await shot("forest_nature_dialogue")
+	game.screen.find_child("dialogue_honest", true, false).pressed.emit()
+	game.screen.find_child("dialogue_continue", true, false).pressed.emit()
+	await shot("forest_prior_history")
+	game.world.forest_action("accept")
+	game.resume()
+	game.world.interact()
+	game.screen.find_child("dialogue_continue", true, false).pressed.emit()
+	game.screen.find_child("forest_aid_blood", true, false).pressed.emit()
+	await shot("forest_blood_review")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)
-func shot(file: String) -> void:
+func shot(file: String, camera: Camera2D = null) -> void:
+	if camera != null:
+		camera.reset_smoothing()
+		camera.force_update_scroll()
 	for i in 4: await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/" + file + ".png")

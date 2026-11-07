@@ -1,6 +1,6 @@
 extends RefCounted
 const Rules = preload("res://scripts/nature/dialogue_rules.gd")
-const NAMES := {"keeper": "KEEPER_NAME", "merchant": "MERCHANT_NAME", "wayfarer": "AID_NAME", "warden": "WARDEN_NAME", "wright": "WRIGHT_NAME", "tender": "TENDER_NAME", "tracker": "TRACKER_NAME", "host": "HOST_NAME", "mentor": "MENTOR_NAME", "witness": "WITNESS_NAME"}
+const NAMES := {"keeper": "KEEPER_NAME", "merchant": "MERCHANT_NAME", "wayfarer": "AID_NAME", "warden": "WARDEN_NAME", "wright": "WRIGHT_NAME", "tender": "TENDER_NAME", "tracker": "TRACKER_NAME", "host": "HOST_NAME", "mentor": "MENTOR_NAME", "witness": "WITNESS_NAME", "roadkeeper": "ROADKEEPER_NAME"}
 static func show_page(ui: Node, kind: String, original: String = "") -> void:
 	ui.current_screen = "dialog"
 	ui._page(NAMES.get(kind, "DIALOGUE_TITLE"), 620)
