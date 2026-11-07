@@ -394,5 +394,31 @@ func capture() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/dialogue_mist.png")
+	NatureFixture.vampire(session_for_skills)
+	session_for_skills.nature.gift = "blood_mist"
+	session_for_skills.gathered.append_array(["flight:bat", "flight:mist"])
+	session_for_skills.opened.append("waterworks_flight")
+	session_for_skills.region = "lake"
+	session_for_skills.arrival = Vector2(760, 650)
+	game._build_world()
+	game.resume()
+	for i in 3: await physics_frame
+	game.world.player.shift_form("mist")
+	var watcher = load("res://scripts/actors/enemy.gd").new()
+	watcher.position = Vector2(910, 650)
+	watcher.target = game.world.player
+	game.world.add_child(watcher)
+	watcher.set_physics_process(false)
+	watcher._physics_process(0.016)
+	for i in 10: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/mist_unnoticed.png")
+	game.world.player.shift_form()
+	watcher._physics_process(0.016)
+	game.world.player.shift_form("mist")
+	watcher._physics_process(0.1)
+	for i in 10: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/mist_alert.png")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)

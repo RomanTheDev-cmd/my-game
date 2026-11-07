@@ -274,6 +274,9 @@ func weapon_stats() -> Dictionary:
 	return Gear.weapon(Session.equipped)
 func movement_speed() -> float:
 	return {"bat": 190.0, "mist": 135.0, "wolf": 175.0, "hybrid": 125.0, "battle": 145.0}.get(Session.nature.form, 115.0)
+func visibility_scale() -> float:
+	return 0.35 if Session.nature.form == "mist" else 1.0
+
 func can_track() -> bool:
 	return (Session.nature.kind == "werewolf" and Session.nature.form == "wolf") or scent_time > 0
 

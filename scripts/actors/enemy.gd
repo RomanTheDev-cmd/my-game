@@ -24,6 +24,7 @@ var path := PackedVector2Array()
 var path_index := 0
 var path_timer := 0.0
 var path_target := Vector2.INF
+var awareness_time := 0.0
 var slow_remaining := 0.0
 var slow_multiplier := 1.0
 
@@ -46,6 +47,7 @@ func _physics_process(delta: float) -> void:
 	_tick_slow(delta)
 	if not is_instance_valid(target) or target.health <= 0:
 		return
+	_tick_awareness(delta)
 	timer = maxf(0, timer - delta)
 	path_timer = maxf(0, path_timer - delta)
 	var offset := target.global_position - global_position
@@ -62,12 +64,12 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		if timer == 0:
 			state = "idle"
-	elif offset.length() < attack_distance and (navigation == null or navigation.segment_clear(global_position, target.global_position)):
+	elif detects_target() and offset.length() < attack_distance and (navigation == null or navigation.segment_clear(global_position, target.global_position)):
 		state = "windup"
 		timer = windup_duration
 		attack_origin = global_position
 		attack_direction = offset.normalized()
-	elif offset.length() < aggro_range and global_position.distance_to(home) < 320:
+	elif detects_target() and global_position.distance_to(home) < 320:
 		velocity = _steer(target.global_position, move_speed)
 	else:
 		velocity = _steer(home, 35) if global_position.distance_to(home) > 8 else Vector2.ZERO
@@ -78,8 +80,9 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 func receive_damage(amount: float, direction: Vector2) -> void:
-	if health <= 0:
+	if health <= 0 or not is_finite(amount) or amount <= 0:
 		return
+	awareness_time = 4.0
 	Sound.play_at("impact", global_position)
 	health -= amount
 	modulate = Color(1.9, 0.7, 0.7)
@@ -91,6 +94,7 @@ func receive_damage(amount: float, direction: Vector2) -> void:
 		queue_free()
 
 func _draw() -> void:
+	_draw_awareness()
 	if state == "windup":
 		draw_arc(Vector2(0, -6), attack_reach - 10, attack_direction.angle() - 1.1, attack_direction.angle() + 1.1,
 			16, Color(0.9, 0.45, 0.27, 0.8), 3)
@@ -123,3 +127,18 @@ func _tick_slow(delta: float) -> void:
 	slow_remaining = maxf(0, slow_remaining - delta)
 	if slow_remaining == 0:
 		slow_multiplier = 1.0
+
+func detection_radius() -> float:
+	var scale_value: float = target.visibility_scale() if is_instance_valid(target) and target.has_method("visibility_scale") else 1.0
+	return maxf(64, aggro_range * scale_value)
+func _tick_awareness(delta: float) -> void:
+	awareness_time = maxf(0, awareness_time - delta)
+	var concealed := detection_radius() < aggro_range
+	if target.global_position.distance_to(global_position) < detection_radius() and (not concealed or navigation == null or navigation.segment_clear(global_position, target.global_position)):
+		awareness_time = 4.0
+func detects_target() -> bool:
+	return is_instance_valid(target) and awareness_time > 0 and target.global_position.distance_to(global_position) < aggro_range
+func _draw_awareness() -> void:
+	if awareness_time > 0:
+		draw_line(Vector2(0, -47), Vector2(0, -41), Color("e6ba78"), 2)
+		draw_circle(Vector2(0, -37), 1.5, Color("e6ba78"))

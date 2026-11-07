@@ -13,6 +13,7 @@ func _physics_process(delta: float) -> void:
 	_tick_slow(delta)
 	if not is_instance_valid(target) or target.health <= 0:
 		return
+	_tick_awareness(delta)
 	timer = maxf(0, timer - delta)
 	path_timer = maxf(0, path_timer - delta)
 	var offset := target.global_position - global_position
@@ -31,7 +32,7 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		if timer == 0:
 			state = "idle"
-	elif offset.length() < aggro_range and global_position.distance_to(home) < 380:
+	elif detects_target() and global_position.distance_to(home) < 380:
 		if offset.length() < 85 and clear:
 			var retreat := (global_position - offset.normalized() * 70).clamp(Vector2(30, 30), Vector2(1890, 1250))
 			velocity = _steer(retreat, 55)
@@ -55,6 +56,7 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	_draw_awareness()
 	if state == "windup":
 		draw_line(Vector2(0, -6), attack_direction * 75 + Vector2(0, -6), Color("c28c68"), 2)
 	if health < max_health:
