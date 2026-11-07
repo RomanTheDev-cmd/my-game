@@ -211,12 +211,19 @@ func award_xp(amount: int) -> void:
 		notice.emit("LEVEL_UP")
 	changed.emit()
 
-func learn_skill(id: String) -> bool:
+func can_learn_skill(id: String) -> bool:
+	if nature.form != "human" or not Skills.SKILLS.has(id) or Skills.learn(xp, skills, id).is_empty(): return false
+	var spell: String = Skills.SKILLS[id].get("spell", "")
+	return spell == "" or Nature.can_spell(nature, spell)
+func learn_skill(id: String, position: Vector2 = Vector2.INF, current_vitals: Dictionary = {}) -> bool:
+	if not can_learn_skill(id): return false
 	var result := Skills.learn(xp, skills, id)
-	if result.is_empty():
+	var data := snapshot(arrival if position == Vector2.INF else position, current_vitals)
+	data.skills = result
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
 		return false
-	skills = result
-	changed.emit()
+	apply(data)
 	return true
 
 func advance_aid(event: String, mana: float) -> Dictionary:

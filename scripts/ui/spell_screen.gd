@@ -14,13 +14,19 @@ static func show_book(ui: Node) -> void:
 	list.add_theme_constant_override("separation", 8)
 	scroll.add_child(list)
 	for id in Magic.SPELLS:
+		var spell := Magic.profile(id, Session.skills)
 		var button: Button = ui._button("SPELL_" + id.to_upper(), func():
 			ui.resume()
 			ui.world.player.cast_magic(id), list)
 		button.name = "cast_" + id
-		button.text += " [%s] · %s %d" % [KEYS[id], ui.tr("MANA_COST"), int(Magic.SPELLS[id].cost)]
+		button.text += " [%s] · %s %d" % [KEYS[id], ui.tr("MANA_COST"), int(spell.cost)]
 		button.disabled = not ui.world.player.can_cast_magic(id)
 		var details: Label = ui._label(list, "SPELL_" + id.to_upper() + "_DESC", 14)
+		match id:
+			"heal": details.text = ui.tr("SPELL_HEAL_CURRENT") % spell.healing
+			"light": details.text = ui.tr("SPELL_LIGHT_CURRENT") % spell.damage
+			"frost": details.text = ui.tr("SPELL_FROST_CURRENT") % [spell.damage, (1.0 - spell.slow_multiplier) * 100, spell.slow_duration]
+			"aegis": details.text = ui.tr("SPELL_AEGIS_CURRENT") % [spell.shield, spell.duration, spell.recharge]
 		details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		details.custom_minimum_size.x = 580
 		button.focus_entered.connect(scroll.ensure_control_visible.bind(details), CONNECT_DEFERRED)

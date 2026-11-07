@@ -482,5 +482,37 @@ func capture() -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/dialogue_host_vampire.png")
+	NatureFixture.completed_episode(session_for_skills)
+	session_for_skills.region = "haven"
+	session_for_skills.arrival = Vector2(520, 650)
+	session_for_skills.xp = 840
+	session_for_skills.skills = {"mending": 1, "frost": 1, "aegis": 1}
+	game._build_world()
+	game.resume()
+	game.show_skills()
+	for i in 3: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/spell_training.png")
+	game.resume()
+	for id in ["mending", "frost", "aegis"]: game.world.learn_skill(id)
+	game.show_spells()
+	for i in 3: await process_frame
+	game.screen.find_child("cast_frost", true, false).grab_focus()
+	for i in 2: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/learned_frost_book.png")
+	game.screen.find_child("cast_aegis", true, false).grab_focus()
+	for i in 3: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/learned_aegis_book.png")
+	game.resume()
+	game.world.player.health = 30
+	game.world.player.mana = 100
+	game.world.player.cast_magic("heal")
+	game.world.player.magic_cooldown = 0
+	game.world.player.cast_magic("aegis")
+	for i in 20: await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("res://build/learned_ward.png")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)

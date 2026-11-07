@@ -604,20 +604,23 @@ func show_skills() -> void:
 	var summary := _label(screen, "", 16)
 	summary.text = "%s %d · %s: %d · %s: %d" % [tr("LEVEL"), Skills.level(Session.xp), tr("EXPERIENCE"), Session.xp, tr("SKILL_POINTS"), Skills.points(Session.xp, Session.skills)]
 	summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var contents := EquipmentScreen.content(self, 245)
+	_label(contents, "LEARN_CONDITIONS", 14).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	for id in Skills.SKILLS:
 		var definition: Dictionary = Skills.SKILLS[id]
-		var button := _button(definition.name, _learn_skill.bind(id))
+		var button := _button(definition.name, _learn_skill.bind(id), contents)
+		button.name = "learn_" + id
 		button.text += "  %d/%d" % [int(Session.skills.get(id, 0)), definition.max]
 		button.tooltip_text = tr(definition.description)
-		button.disabled = Skills.learn(Session.xp, Session.skills, id).is_empty()
-		var description := _label(screen, definition.description, 13)
+		button.disabled = not world.can_learn_skill(id)
+		var description := _label(contents, definition.description, 13)
 		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		description.custom_minimum_size.x = 620
+		description.custom_minimum_size.x = 590
 	_button("BACK", resume)
 	_focus_first()
 
 func _learn_skill(id: String) -> void:
-	Session.learn_skill(id)
+	world.learn_skill(id)
 	show_skills()
 
 func show_aid_dialog() -> void:

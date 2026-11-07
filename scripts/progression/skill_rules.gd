@@ -1,7 +1,10 @@
 extends RefCounted
 const SKILLS := {
+	"mending": {"max": 2, "requires": "", "spell": "heal", "name": "SKILL_MENDING", "description": "SKILL_MENDING_DESC"},
+	"frost": {"max": 2, "requires": "", "spell": "frost", "name": "SKILL_FROST", "description": "SKILL_FROST_DESC"},
+	"aegis": {"max": 2, "requires": "", "spell": "aegis", "name": "SKILL_AEGIS", "description": "SKILL_AEGIS_DESC"},
 	"sword": {"max": 3, "requires": "", "name": "SKILL_SWORD", "description": "SKILL_SWORD_DESC"},
-	"light": {"max": 3, "requires": "", "name": "SKILL_LIGHT", "description": "SKILL_LIGHT_DESC"},
+	"light": {"max": 3, "requires": "", "spell": "light", "name": "SKILL_LIGHT", "description": "SKILL_LIGHT_DESC"},
 	"ward": {"max": 2, "requires": "sword", "name": "SKILL_WARD", "description": "SKILL_WARD_DESC"}
 }
 

@@ -2,6 +2,8 @@ extends Node2D
 signal blood_drained(amount: float)
 var direction := Vector2.RIGHT
 var kind := "light"
+var slow_duration := 4.0
+var slow_multiplier := 0.55
 var damage := 24.0
 var speed := 360.0
 var remaining := 1.4
@@ -29,7 +31,7 @@ func _physics_process(delta: float) -> void:
 			if kind == "blood" and hit.collider.health < previous_health:
 				blood_drained.emit(minf(18, (previous_health - maxf(0, hit.collider.health)) * 0.75))
 			if kind == "frost" and hit.collider.has_method("apply_slow"):
-				hit.collider.apply_slow(4.0, 0.55)
+				hit.collider.apply_slow(slow_duration, slow_multiplier)
 		queue_free()
 		set_physics_process(false)
 		return

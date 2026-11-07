@@ -207,7 +207,7 @@ func _draw() -> void:
 		draw_arc(Vector2(0, -6), 17, facing.angle() - 0.9, facing.angle() + 0.9, 8, Color("c9b989"), 3)
 
 func can_cast_magic(id: String) -> bool:
-	return Nature.can_spell(Session.nature, id) and dodge_time == 0 and not (id == "aegis" and shield_recharge > 0) and not Magic.cast(id, health, mana, magic_cooldown).is_empty()
+	return Nature.can_spell(Session.nature, id) and dodge_time == 0 and not (id == "aegis" and shield_recharge > 0) and not Magic.cast(id, health, mana, magic_cooldown, Session.skills).is_empty()
 
 func cast_magic(id: String) -> bool:
 	if not Nature.can_spell(Session.nature, id):
@@ -218,11 +218,11 @@ func cast_magic(id: String) -> bool:
 	if id == "aegis" and shield_recharge > 0:
 		Session.notice.emit("SPELL_RECHARGING")
 		return false
-	var result := Magic.cast(id, health, mana, magic_cooldown)
+	var result := Magic.cast(id, health, mana, magic_cooldown, Session.skills)
 	if result.is_empty():
 		if id == "heal" and health >= 100:
 			Session.notice.emit("NO_HEAL_NEEDED")
-		elif Magic.SPELLS.has(id) and mana < Magic.SPELLS[id].cost:
+		elif Magic.SPELLS.has(id) and mana < Magic.profile(id, Session.skills).get("cost", INF):
 			Session.notice.emit("NOT_ENOUGH_MANA")
 		return false
 	Sound.play_at("block" if id == "aegis" else ("magic" if id in ["light", "frost"] else "heal"), global_position)
@@ -233,12 +233,11 @@ func cast_magic(id: String) -> bool:
 		var direction := facing
 		if aim_with_mouse and global_position.distance_to(get_global_mouse_position()) > 3:
 			direction = (get_global_mouse_position() - global_position).normalized()
-		var bonus := 6 * int(Session.skills.get("light", 0)) if id == "light" else 0
-		cast_spell.emit(global_position + direction * 12, direction, result.damage + bonus, id)
+		cast_spell.emit(global_position + direction * 12, direction, result.damage, id)
 	elif id == "aegis":
-		shield_strength = result.shield + 10 * int(Session.skills.get("ward", 0))
-		shield_time = Magic.SPELLS.aegis.duration
-		shield_recharge = Magic.SPELLS.aegis.recharge
+		shield_strength = result.shield
+		shield_time = result.duration
+		shield_recharge = result.recharge
 	else:
 		modulate = Color(1, 1.4, 1.15)
 	stats_changed.emit()

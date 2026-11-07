@@ -1,4 +1,5 @@
 extends Node2D
+const Magic = preload("res://scripts/magic/magic_rules.gd")
 const Community = preload("res://scripts/factions/community_rules.gd")
 const Haven = preload("res://scripts/world/haven_landscape.gd")
 const Dialogue = preload("res://scripts/nature/dialogue_rules.gd")
@@ -377,6 +378,10 @@ func _on_cast_spell(origin: Vector2, direction: Vector2, amount: float, kind: St
 	bolt.direction = direction
 	bolt.damage = amount
 	bolt.kind = kind
+	if kind == "frost":
+		var spell := Magic.profile(kind, Session.skills)
+		bolt.slow_duration = spell.slow_duration
+		bolt.slow_multiplier = spell.slow_multiplier
 	bolt.blood_drained.connect(func(amount):
 		if Session.nature.kind == "vampire" and player.health > 0:
 			player.health = minf(100, player.health + amount)
@@ -677,3 +682,12 @@ func _update_community_environment() -> void:
 	for target in community_markers:
 		community_markers[target].done = "community:seen:" + target in Session.gathered if target != "search" else Community.stage(Session.gathered) >= 3
 		community_markers[target].queue_redraw()
+
+func can_learn_skill(id: String) -> bool:
+	return player.health > 0 and safe_to_rest() and Session.can_learn_skill(id)
+func learn_skill(id: String) -> bool:
+	if not can_learn_skill(id):
+		Session.notice.emit("LEARN_UNAVAILABLE")
+		return false
+	_sync_context()
+	return Session.learn_skill(id, player.position, player_vitals())

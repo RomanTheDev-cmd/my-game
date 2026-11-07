@@ -140,10 +140,7 @@ func run() -> void:
 	check(session.quest == 3 and not session.inventory.has("lantern"), "turn-in completes quest and removes item")
 	check(session.xp == 60, "quest completion adds its experience reward once")
 	game.show_skills()
-	for child in game.screen.get_children():
-		if child is Button and child.text.begins_with(TranslationServer.translate("SKILL_SWORD")):
-			child.pressed.emit()
-			break
+	game.screen.find_child("learn_sword", true, false).pressed.emit()
 	check(session.skills.get("sword") == 1, "actual skill screen spends an earned point")
 	game.resume()
 	for child in game.world.get_children():
