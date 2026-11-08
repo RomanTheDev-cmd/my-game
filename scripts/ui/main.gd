@@ -6,6 +6,7 @@ const PackScreen = preload("res://scripts/ui/pack_screen.gd")
 const Nature = preload("res://scripts/nature/nature_rules.gd")
 const NatureScreen = preload("res://scripts/ui/nature_screen.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
+const RescueScreen = preload("res://scripts/ui/rescue_screen.gd")
 const PreparationScreen = preload("res://scripts/ui/preparation_screen.gd")
 const JunctionScreen = preload("res://scripts/ui/junction_screen.gd")
 const CityScreen = preload("res://scripts/ui/city_screen.gd")
@@ -306,6 +307,7 @@ func show_journal() -> void:
 		side.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	JunctionScreen.journal(self, contents)
 	PreparationScreen.journal(self, contents)
+	RescueScreen.journal(self, contents)
 	CityScreen.journal(self, contents)
 	ForestScreen.journal(self, contents)
 	CampaignScreen.journal(self, contents)
@@ -333,11 +335,14 @@ func show_journal() -> void:
 	_button("BACK", resume).grab_focus()
 
 func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void:
-	var role := kind.trim_prefix("commission:").trim_prefix("reaction:").trim_prefix("community:").trim_prefix("story:").trim_prefix("forest:").trim_prefix("city:").trim_prefix("junction:").trim_prefix("preparation:")
+	var role := kind.trim_prefix("commission:").trim_prefix("reaction:").trim_prefix("community:").trim_prefix("story:").trim_prefix("forest:").trim_prefix("city:").trim_prefix("junction:").trim_prefix("preparation:").trim_prefix("rescue:")
 	if kind == "merchant_closed": role = "merchant"
 	if kind == "junction:invite": role = "mentor"
 	if not bypass_reaction and DialogueRules.GROUPS.has(role) and DialogueRules.context(Session.nature) != "":
 		DialogueScreen.show_page(self, role, kind if not kind.begins_with("reaction:") else "")
+		return
+	if kind.begins_with("rescue:"):
+		RescueScreen.show_page(self)
 		return
 	if kind.begins_with("preparation:"):
 		PreparationScreen.show_page(self, kind.trim_prefix("preparation:"))
@@ -544,6 +549,7 @@ func update_hud() -> void:
 	var joint_stage := JunctionScreen.Rules.stage(Session.gathered, Session.opened)
 	if joint_stage in [1, 2, 3]: quest_label.text = tr("JOINT_HUD_%d" % joint_stage)
 	if "prep:accepted" in Session.gathered: quest_label.text = tr("PREP_HINT_%d" % PreparationScreen.Rules.stage(Session.gathered, Session.opened))
+	if "rescue:accepted" in Session.gathered: quest_label.text = tr("RESCUE_HINT_%d" % RescueScreen.Rules.stage(Session.gathered, Session.opened))
 	if is_instance_valid(world.boss) and world.boss.awaiting_record:
 		quest_label.text = tr("TRIAL_RECORD_HELP")
 	var near: String = world.nearby_key()
@@ -553,6 +559,11 @@ func update_hud() -> void:
 		var side := near.trim_prefix("PREP_SITE_").to_lower()
 		prompt.text = tr("PREP_TUNE_PROMPT") % [PreparationScreen.Rules.angle(Session.gathered, side) + 1, PreparationScreen.Rules.target(Session.gathered, side) + 1]
 	if near == "PREP_SITE_RETRY": prompt.text = tr("PREP_RETRY_PROMPT")
+	if near == "RESCUE_RETRY_SITE": prompt.text = tr("RESCUE_RETRY_PROMPT")
+	if is_instance_valid(world.rescue_engine) and world.rescue_engine.pending: quest_label.text = tr("RESCUE_RETRY")
+	if near.begins_with("RESCUE_COIL_"):
+		var side := near.trim_prefix("RESCUE_COIL_").to_lower()
+		prompt.text = tr("RESCUE_COIL_DONE") if RescueScreen.Rules.cut(Session.gathered, side) != "" else tr("RESCUE_PHASE_%d" % world.rescue_engine.phase(side))
 	if is_instance_valid(world.preparation_route) and world.preparation_route.active: quest_label.text = tr("PREP_ROUTE_HUD") % [world.preparation_route.step + 1, PreparationScreen.Rules.ROUTE.size()]
 	if is_instance_valid(world.preparation_route) and world.preparation_route.pending: quest_label.text = tr("PREP_PENDING_HUD")
 

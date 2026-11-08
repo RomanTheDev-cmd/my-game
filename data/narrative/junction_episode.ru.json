@@ -1,5 +1,5 @@
 {
-  "status": "common_discovery playable; preparation implemented separately; actual rescue pending",
+  "status": "common_discovery playable; preparation implemented separately; rescue implemented separately",
   "rules": "scripts/quests/junction_rules.gd",
   "source_sequences": [
     "common_discovery"

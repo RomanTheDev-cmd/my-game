@@ -1,4 +1,5 @@
 extends Node
+const Rescue = preload("res://scripts/quests/rescue_rules.gd")
 const Preparation = preload("res://scripts/quests/preparation_rules.gd")
 const Junction = preload("res://scripts/quests/junction_rules.gd")
 const City = preload("res://scripts/quests/city_rules.gd")
@@ -576,4 +577,20 @@ func preparation_event(event: String, position: Vector2, current_vitals: Diction
 		return false
 	apply(data)
 	notice.emit("PREP_SAVED")
+	return true
+
+func rescue_event(event: String, position: Vector2, current_vitals: Dictionary, calm: bool = false, impact: bool = false, arrived: bool = false) -> bool:
+	var result := Rescue.resolve(nature, gathered, opened, inventory, current_vitals, event, calm, impact, arrived)
+	if result.is_empty(): return false
+	var data := snapshot(position, result.vitals)
+	data.nature = result.nature
+	data.gathered = result.gathered
+	data.opened = result.opened
+	data.xp = mini(100000, xp + result.xp)
+	data.world_state.reputation = Factions.change(world_state.reputation, result.trust)
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	apply(data)
+	notice.emit("RESCUE_SAVED")
 	return true

@@ -3,7 +3,7 @@ extends RefCounted
 const REGIONS := {
 	"crossing": {
 		"location": "LOCATION", "description": "REGION", "camp": Vector2(440, 470),
-		"event_point": Vector2(650, 600), "merchant": Vector2(235, 500), "keeper": Vector2(520, 490), "exit": Vector2(1800, 500), "destination": "lake",
+		"event_point": Vector2(650, 600), "merchant": Vector2(235, 500), "keeper": Vector2(520, 490), "mentor": Vector2(600, 600), "exit": Vector2(1800, 500), "destination": "lake",
 		"arrival": Vector2(230, 650), "exit_label": "TO_LAKE",
 		"herbs": [Vector2(650, 670), Vector2(930, 680), Vector2(1200, 700)],
 		"enemies": [["road_1", Vector2(970, 550)], ["road_2", Vector2(1240, 530)], ["road_3", Vector2(1430, 640)]]
@@ -73,10 +73,16 @@ const REGIONS := {
 		"chests": [{"id": "courtyard_supplies", "point": Vector2(980, 780), "requires_opened": ["city_report"], "items": {"herb": 2, "potion": 1}}]
 	},
 	"rotunda": {
+		"extra_exits": [{"point": Vector2(1700, 650), "destination": "underhall", "arrival": Vector2(240, 650), "label": "TO_UNDERHALL", "direction": 1}],
 		"indoor": true, "location": "LOCATION_ROTUNDA", "description": "REGION_ROTUNDA", "camp": Vector2(340, 820), "mentor": Vector2(650, 820), "steward": Vector2(1000, 480), "witness": Vector2(480, 430), "crafter": Vector2(480, 940),
 		"exit": Vector2(135, 650), "destination": "workshop", "arrival": Vector2(830, 1110), "exit_label": "TO_WORKSHOP",
 		"herbs": [Vector2(500, 1020)], "enemies": [],
 		"junction_sites": {"table": Vector2(620, 650), "console": Vector2(1200, 650)}
+	},
+	"underhall": {
+		"indoor": true, "location": "LOCATION_UNDERHALL", "description": "REGION_UNDERHALL", "camp": Vector2(340, 820), "mentor": Vector2(1440, 650),
+		"exit": Vector2(135, 650), "destination": "rotunda", "arrival": Vector2(1640, 650), "exit_label": "TO_ROTUNDA",
+		"herbs": [Vector2(430, 960)], "enemies": []
 	},
 	"waterworks": {
 		"indoor": true, "location": "LOCATION_WATERWORKS", "description": "REGION_WATERWORKS", "camp": Vector2(300, 800),

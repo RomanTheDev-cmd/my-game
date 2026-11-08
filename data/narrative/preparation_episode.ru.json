@@ -1,5 +1,5 @@
 {
-  "status": "preparation playable; actual rescue and aftermath pending",
+  "status": "preparation playable; rescue and aftermath implemented separately",
   "rules": "scripts/quests/preparation_rules.gd",
   "source_sequences": ["preparation", "human_preparation"],
   "participants": ["witness", "crafter"],
@@ -17,5 +17,5 @@
     "separate reviewed readiness, not offscreen rescue",
     "human and returned-human routes stay available"
   ],
-  "continuation": "Next implement actual human/vampire/werewolf rescue routes and aftermath, respecting personal consent and non-fatal ordinary route. Preparation witnesses can assist each nature; no mandatory loss of mentor or helper."
+  "continuation": "Actual human/vampire/werewolf rescue routes and initial aftermath are in rescue_episode.ru.json, respecting personal consent and non-fatal ordinary route. Preparation witnesses can assist each nature; no mandatory loss of mentor or helper."
 }

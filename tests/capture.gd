@@ -883,6 +883,113 @@ func capture() -> void:
 	await shot("preparation_journal")
 	game.resume()
 	await shot("preparation_result", game.get_viewport().get_camera_2d())
+	var rescue_fixture = load("res://tests/support/rescue_fixture.gd")
+	if not rescue_fixture.ready(session):
+		printerr("CAPTURE_RESCUE_FIXTURE_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	session.region = "rotunda"
+	session.arrival = Vector2(650, 820)
+	game._build_world()
+	game.resume()
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	game.world.interact()
+	await shot("rescue_invitation")
+	game.world.rescue_action("accept")
+	session.region = "underhall"
+	session.arrival = Vector2(1440, 650)
+	game._build_world()
+	game.resume()
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	for npc in game.world.npcs.values(): npc.set_physics_process(false)
+	game.world.interact()
+	await shot("rescue_approaches")
+	game.world.rescue_action("tools")
+	game.resume()
+	game.world.player.position = Vector2(940, 400)
+	session.world_state.minutes = 0
+	await shot("rescue_warning", game.get_viewport().get_camera_2d())
+	session.world_state.minutes = 1.5
+	await shot("rescue_pulse", game.get_viewport().get_camera_2d())
+	game.show_map()
+	await shot("rescue_map")
+	game.resume()
+	session.world_state.minutes = 3
+	game.world.rescue_action("manual_north")
+	game.world.player.position = Vector2(850, 870)
+	game.world.player.facing = Vector2.RIGHT
+	game.world.player.aim_with_mouse = false
+	game.world.player.magic_cooldown = 0
+	session.world_state.minutes = 0
+	game.world.player.cast_magic("light")
+	await create_timer(0.6).timeout
+	if not load("res://scripts/quests/rescue_rules.gd").disconnected(session.gathered):
+		printerr("CAPTURE_RESCUE_CUT_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	await shot("rescue_opened", game.get_viewport().get_camera_2d())
+	game.world.player.position = game.world.npcs.mentor.position
+	game.world.interact()
+	game.screen.find_child("rescue_free", true, false).pressed.emit()
+	await shot("rescue_release_review")
+	game.world.rescue_action("free")
+	game.resume()
+	game.world.player.position = Vector2(1380, 650)
+	game.world.set_process(true)
+	game.world.npcs.mentor.set_physics_process(true)
+	game.world.player.set_physics_process(true)
+	Input.action_press("block")
+	Input.action_press("move_left")
+	var rescue_frames := 0
+	while game.world.player.position.x > 1000 and rescue_frames < 1800:
+		await physics_frame
+		rescue_frames += 1
+	Input.action_release("move_left")
+	game.world.player.set_physics_process(false)
+	game.world.npcs.mentor.set_physics_process(false)
+	await shot("rescue_guide", game.get_viewport().get_camera_2d())
+	DirAccess.make_dir_absolute("user://save.json.tmp")
+	game.world.player.set_physics_process(true)
+	game.world.npcs.mentor.set_physics_process(true)
+	Input.action_press("move_left")
+	while game.world.player.position.x > 280 and rescue_frames < 1800:
+		await physics_frame
+		rescue_frames += 1
+	Input.action_release("move_left")
+	Input.action_release("block")
+	game.world.player.set_physics_process(false)
+	game.world.npcs.mentor.set_physics_process(false)
+	game.world.set_process(false)
+	if not game.world.rescue_engine.pending:
+		printerr("CAPTURE_RESCUE_ARRIVAL_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	await shot("rescue_retry", game.get_viewport().get_camera_2d())
+	DirAccess.remove_absolute("user://save.json.tmp")
+	game.world.rescue_engine.retry()
+	session.region = "rotunda"
+	session.arrival = Vector2(650, 820)
+	game._build_world()
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	game.resume()
+	game.world.interact()
+	game.screen.find_child("rescue_report", true, false).pressed.emit()
+	await shot("rescue_report_review")
+	game.world.rescue_action("report")
+	session.region = "crossing"
+	session.arrival = Vector2(600, 600)
+	game._build_world()
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	game.resume()
+	game.world.interact()
+	await shot("rescue_aftermath")
+	game.world.rescue_action("rest")
+	game.resume()
+	await shot("rescue_home", game.get_viewport().get_camera_2d())
 	print("CAPTURE_OK")
 	await TestExit.finish(self)
 func shot(file: String, camera: Camera2D = null) -> void:

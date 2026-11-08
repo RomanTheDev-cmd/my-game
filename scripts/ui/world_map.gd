@@ -65,6 +65,8 @@ func _draw() -> void:
 		for point in preparation.CONTROLS.values():
 			var mark := project(point)
 			draw_rect(Rect2(mark - Vector2(3, 3), Vector2(6, 6)), Color("cfbf8a"), false, 1)
+	if region == "underhall":
+		for point in preload("res://scripts/quests/rescue_rules.gd").COILS.values(): draw_circle(project(point), 4, Color("d2b88c"))
 	var definition := Regions.get_region(region)
 	for point in Regions.camps(region, Session.opened):
 		var camp := project(point)

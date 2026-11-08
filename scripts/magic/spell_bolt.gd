@@ -21,11 +21,13 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 		return
 	var destination := global_position + direction * speed * delta
-	var query := PhysicsRayQueryParameters2D.create(global_position, destination, 1 | 4 | 16)
+	var query := PhysicsRayQueryParameters2D.create(global_position, destination, 1 | 4 | 16 | 32)
 	query.hit_from_inside = true
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
-		if hit.collider.has_method("receive_damage"):
+		if hit.collider.has_method("receive_spell"):
+			hit.collider.receive_spell(kind, damage)
+		elif hit.collider.has_method("receive_damage"):
 			var previous_health: float = hit.collider.health
 			hit.collider.receive_damage(damage, direction)
 			if kind == "blood" and hit.collider.health < previous_health:

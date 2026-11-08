@@ -1,4 +1,8 @@
 extends Node2D
+const Rescue = preload("res://scripts/quests/rescue_rules.gd")
+const Underhall = preload("res://scripts/world/underhall_landscape.gd")
+const RescueEngine = preload("res://scripts/world/rescue_engine.gd")
+const RescueCoil = preload("res://scripts/world/rescue_coil.gd")
 const Preparation = preload("res://scripts/quests/preparation_rules.gd")
 const PreparationRoute = preload("res://scripts/world/preparation_route.gd")
 const Junction = preload("res://scripts/quests/junction_rules.gd")
@@ -49,6 +53,8 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var rescue_engine: Node2D
+var rescue_coils: Dictionary = {}
 var preparation_route: Node2D
 var junction_objects: Dictionary = {}
 var city_objects: Dictionary = {}
@@ -84,7 +90,7 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = Rotunda.new() if Session.region == "rotunda" else CityLandscape.new() if Session.region == "velshof" else Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
+	landscape = Underhall.new() if Session.region == "underhall" else Rotunda.new() if Session.region == "rotunda" else CityLandscape.new() if Session.region == "velshof" else Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
@@ -92,6 +98,18 @@ func _ready() -> void:
 		preparation_route = PreparationRoute.new()
 		preparation_route.world = self
 		add_child(preparation_route)
+	if Session.region == "underhall":
+		rescue_engine = RescueEngine.new()
+		rescue_engine.world = self
+		rescue_engine.z_index = -1
+		add_child(rescue_engine)
+		for side in Rescue.COILS:
+			var coil := RescueCoil.new()
+			coil.side = side
+			coil.world = self
+			coil.position = Rescue.COILS[side]
+			add_child(coil)
+			rescue_coils[side] = coil
 	_build_commission_objects()
 	for id in definition.get("junction_sites", {}):
 		var object := JunctionConsole.new()
@@ -221,6 +239,8 @@ func _ready() -> void:
 	_update_preparation_environment()
 	Session.changed.connect(_update_junction_environment)
 	_update_junction_environment()
+	Session.changed.connect(_update_rescue_environment)
+	_update_rescue_environment()
 	Session.changed.connect(_update_city_environment)
 	_update_city_environment()
 	Session.changed.connect(_update_forest_environment)
@@ -266,6 +286,7 @@ func _process(delta: float) -> void:
 		Session.set_fullscreen(not Session.fullscreen)
 
 func safe_to_rest() -> bool:
+	if is_instance_valid(rescue_engine) and rescue_engine.dangerous(player.position): return false
 	if is_instance_valid(boss) and (boss.awaiting_record or boss.engaged): return false
 	for child in get_children():
 		if child is BossEnemy and not child.armed: continue
@@ -299,6 +320,10 @@ func nearby_key() -> String:
 		if preparation_route.pending and player.position.distance_to(Preparation.CONTROLS.finish) < 45: return "PREP_SITE_RETRY"
 		for id in ["north", "south", "gate"]:
 			if player.position.distance_to(Preparation.CONTROLS[id]) < 45: return "PREP_SITE_" + id.to_upper()
+	if is_instance_valid(rescue_engine):
+		if rescue_engine.pending and player.position.distance_to(Rescue.EXIT) < 75: return "RESCUE_RETRY_SITE"
+		for side in rescue_coils:
+			if player.position.distance_to(Rescue.COILS[side]) < 48: return "RESCUE_COIL_" + side.to_upper()
 	for kind in ["warden", "wright", "tender", "tracker", "host", "mentor", "witness", "roadkeeper", "crafter", "archivist", "steward"]:
 		if npcs[kind].visible and player.position.distance_to(npcs[kind].position) < 48:
 			return kind.to_upper() + "_NAME"
@@ -343,6 +368,15 @@ func interact() -> void:
 	_update_tracking()
 	_sync_context()
 	var key := nearby_key()
+	if key == "RESCUE_RETRY_SITE":
+		rescue_engine.retry()
+		return
+	if key.begins_with("RESCUE_COIL_"):
+		if not rescue_action("manual_" + key.trim_prefix("RESCUE_COIL_").to_lower()): Session.notice.emit("RESCUE_WORK_BLOCKED")
+		return
+	if key == "MENTOR_NAME" and "preparation_report" in Session.opened:
+		dialog_requested.emit("rescue:mentor")
+		return
 	if key.begins_with("PREP_SITE_"):
 		var target := key.trim_prefix("PREP_SITE_").to_lower()
 		if target == "retry": preparation_route.activate()
@@ -453,6 +487,9 @@ func interact() -> void:
 
 func _on_strike(origin: Vector2, direction: Vector2) -> void:
 	if Session.nature.form in ["bat", "mist"]: return
+	for side in rescue_coils:
+		var offset: Vector2 = Rescue.COILS[side] - origin
+		if offset.length() < player.weapon_stats().reach and offset.normalized().dot(direction) > 0.15 and navigation.segment_clear(origin, Rescue.COILS[side]): rescue_action("claw_" + side, true)
 	for child in get_children():
 		if child is Enemy:
 			var offset: Vector2 = child.global_position - origin
@@ -547,6 +584,12 @@ func _spawn_npc(kind: String) -> CharacterBody2D:
 func _update_npcs() -> void:
 	for npc in npcs.values():
 		if is_instance_valid(npc) and npc.visible:
+			if Session.region == "underhall" and npc.kind == "mentor":
+				npc.walk_speed = 75
+				var follow: bool = Rescue.stage(Session.gathered, Session.opened) == 3 and Session.nature.form == "human" and player.health > 0 and safe_to_rest()
+				var distance: float = npc.position.distance_to(player.position)
+				npc.set_destination(player.position if follow and distance > 55 and distance < 280 else npc.position)
+				continue
 			if Session.region == "rotunda" and npc.kind in ["witness", "crafter"]:
 				npc.walk_speed = 85
 				npc.set_destination(Preparation.post(Session.gathered, npc.kind))
@@ -767,6 +810,12 @@ func _update_tracking() -> void:
 		if entry.id not in Session.opened and offset < distance:
 			nearest = chest.position
 			distance = offset
+	if Session.nature.kind == "vampire" and "rescue:boundary:keep" in Session.gathered and npcs.mentor.visible and player.position.distance_to(npcs.mentor.position) < 500:
+		tracking_cue.visible = true
+		tracking_cue.position = player.position + Vector2(0, -12)
+		tracking_cue.direction = player.position.direction_to(npcs.mentor.position)
+		tracking_cue.queue_redraw()
+		return
 	tracking_cue.visible = player.can_track() and nearest != Vector2.INF
 	if tracking_cue.visible:
 		tracking_cue.position = player.position + Vector2(0, -12)
@@ -886,7 +935,7 @@ func _update_escort(npc: CharacterBody2D) -> void:
 		npc.set_destination(Forest.POINTS[2] - Vector2(65, 0))
 		return
 	npc.walk_speed = 90 if Session.gathered.any(func(flag): return flag in Forest.AIDS) else 70
-	var distance := npc.position.distance_to(player.position)
+	var distance: float = npc.position.distance_to(player.position)
 	if player.health <= 0 or not safe_to_rest() or distance > 220 or distance < 65:
 		npc.set_destination(npc.position)
 	elif npc.destination.distance_to(player.position) > 30:
@@ -1029,4 +1078,50 @@ func _update_preparation_environment() -> void:
 	if is_instance_valid(preparation_route):
 		if preparation_route.active and "prep:tested" not in Session.gathered and not can_rehearse(): preparation_route.cancel()
 		preparation_route.queue_redraw()
+	_update_npcs()
+
+func can_rescue(event: String, impact: bool = false) -> bool:
+	if player.health <= 0 or player.dodge_time > 0 or not safe_to_rest(): return false
+	var parts := event.split("_")
+	var cutting: bool = parts.size() == 2 and parts[0] in ["manual", "light", "claw"] and Rescue.COILS.has(parts[1])
+	var calm := false
+	if cutting:
+		if Session.region != "underhall" or not is_instance_valid(rescue_engine): return false
+		var point: Vector2 = Rescue.COILS[parts[1]]
+		if player.position.distance_to(point) >= (520 if parts[0] == "light" else 60) or not navigation.segment_clear(player.position, point): return false
+		if parts[0] == "manual" and player.attack_time > 0: return false
+		calm = rescue_engine.phase(parts[1]) == 2
+	else:
+		if not Rescue.SITES.has(event) or Session.region != Rescue.SITES[event][0]: return false
+		var target: String = Rescue.SITES[event][1]
+		var point: Vector2 = Rescue.EXIT if target == "exit" else (npcs.mentor.position if npcs.mentor.visible else Vector2.INF)
+		if player.position.distance_to(point) >= (75 if event == "safe" else 48) or not navigation.segment_clear(player.position, point): return false
+		if event == "safe" and not rescue_engine.arrived(): return false
+	return not Rescue.resolve(Session.nature, Session.gathered, Session.opened, Session.inventory, player_vitals(), event, calm, impact, event == "safe").is_empty()
+func rescue_action(event: String, impact: bool = false) -> bool:
+	if not can_rescue(event, impact): return false
+	_sync_context()
+	var parts := event.split("_")
+	var calm: bool = is_instance_valid(rescue_engine) and parts.size() == 2 and Rescue.COILS.has(parts[1]) and rescue_engine.phase(parts[1]) == 2
+	if not Session.rescue_event(event, player.position, player_vitals(), calm, impact, event == "safe"): return false
+	player.stamina = Session.vitals.stamina
+	player.stats_changed.emit()
+	Sound.play_at("collect", player.position)
+	return true
+func _update_rescue_environment() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	var stage := Rescue.stage(Session.gathered, Session.opened)
+	if definition.has("mentor"):
+		if Session.region == "underhall": npcs.mentor.visible = stage in [1, 2, 3]
+		elif Session.region == "crossing": npcs.mentor.visible = stage == 5
+		elif stage > 0: npcs.mentor.visible = Session.region == "rotunda" and stage == 4
+	if Session.region == "underhall" and Rescue.disconnected(Session.gathered):
+		var removed := false
+		for body in get_children():
+			if body is StaticBody2D and body.has_meta("rescue_gate"):
+				remove_child(body)
+				body.queue_free()
+				removed = true
+		if removed: navigation.configure(self)
+	landscape.queue_redraw()
 	_update_npcs()
