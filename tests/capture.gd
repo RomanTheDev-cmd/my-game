@@ -1037,6 +1037,7 @@ func capture() -> void:
 		game.resume()
 	game.show_journal()
 	await shot("accord_journal")
+	await capture_knell(game, session)
 	print("CAPTURE_OK")
 	await TestExit.finish(self)
 func shot(file: String, camera: Camera2D = null) -> void:
@@ -1046,3 +1047,94 @@ func shot(file: String, camera: Camera2D = null) -> void:
 	for i in 4: await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://build/" + file + ".png")
+
+func knell_world(game: Node, session: Node, region: String, arrival: Vector2) -> void:
+	session.region = region
+	session.arrival = arrival
+	game._build_world()
+	game.world.set_process(false)
+	for child in game.world.get_children():
+		if child is CharacterBody2D: child.set_physics_process(false)
+	game.resume()
+func capture_knell(game: Node, session: Node) -> void:
+	var fixture = load("res://tests/support/knell_fixture.gd")
+	var bell_rules = load("res://scripts/combat/bell_rules.gd")
+	if not fixture.ready(session, "human", "renewal"):
+		printerr("CAPTURE_KNELL_FIXTURE_FAILED")
+		return
+	session.world_state.minutes = 1400
+	await knell_world(game, session, "crossing", Vector2(1120, 470))
+	game.world.knell_cue.elapsed = 0.7
+	game.world.knell_cue.set_process(false)
+	game.world.knell_cue.visible = true
+	game.world.knell_cue.queue_redraw()
+	await shot("knell_chapel_night", game.get_viewport().get_camera_2d())
+	game.world.player.position = game.world.keeper.position
+	game.world.interact()
+	game.screen.find_child("knell_entry", true, false).pressed.emit()
+	await shot("knell_request")
+	game.screen.find_child("knell_accept", true, false).pressed.emit()
+	await knell_world(game, session, "undercroft", Vector2(240, 650))
+	await shot("knell_undercroft_entry", game.get_viewport().get_camera_2d())
+	game.show_map()
+	await shot("knell_map")
+	game.resume()
+	var echo: CharacterBody2D
+	for child in game.world.get_children():
+		if child is CharacterBody2D and child.get("transient") != null:
+			echo = child
+			break
+	game.world.player.position = echo.position + Vector2(-70, 20)
+	echo.state = "windup"
+	echo.timer = 0.3
+	echo.attack_origin = echo.position
+	echo.queue_redraw()
+	await shot("knell_echo_windup", game.get_viewport().get_camera_2d())
+	echo.state = "toll"
+	echo.ring_radius = 62
+	echo.queue_redraw()
+	game.world.player.ringing_time = 2.6
+	game.update_hud()
+	await shot("knell_echo_ring", game.get_viewport().get_camera_2d())
+	game.world.player.ringing_time = 0
+	game.world.player.position = Vector2(430, 355)
+	game.world.interact()
+	await shot("knell_plaque")
+	game.resume()
+	for id in ["hall", "gallery", "ossuary"]: session.knell_event("read_" + id, Vector2(330, 820), {"health": 90.0, "stamina": 100.0, "mana": 90.0})
+	await knell_world(game, session, "undercroft", Vector2(1225, 400))
+	var bell = game.world.bell
+	bell.engaged = true
+	bell.attack_spec = bell_rules.attack(1, 3)
+	bell.state = "windup"
+	bell.timer = 1.0
+	bell.queue_redraw()
+	game.update_hud()
+	await shot("knell_bell_knell", game.get_viewport().get_camera_2d())
+	bell.attack_spec = bell_rules.attack(1, 0)
+	bell.state = "recover"
+	bell.rings.clear()
+	bell.rings.append({"radius": 160.0, "delay": 0.0, "hit": false, "damage": 20.0})
+	game.world.player.position = Vector2(1300, 705)
+	bell.queue_redraw()
+	await shot("knell_bell_toll", game.get_viewport().get_camera_2d())
+	session.region = "undercroft"
+	session.knell_event("silence", Vector2(1300, 705), {"health": 90.0, "stamina": 100.0, "mana": 90.0})
+	await knell_world(game, session, "crossing", Vector2(600, 600))
+	game.world.player.position = game.world.keeper.position
+	game.world.interact()
+	game.screen.find_child("knell_entry", true, false).pressed.emit()
+	await shot("knell_report")
+	game.screen.find_child("knell_kept", true, false).pressed.emit()
+	await shot("knell_review")
+	game.screen.find_child("knell_confirm_kept", true, false).pressed.emit()
+	await shot("knell_epilogue")
+	game.resume()
+	game.show_journal()
+	await shot("knell_journal")
+	game.resume()
+	if not fixture.accepted(session, "human", "release"):
+		printerr("CAPTURE_KNELL_RELEASE_FAILED")
+		return
+	await knell_world(game, session, "undercroft", Vector2(1080, 1000))
+	await shot("knell_passage_release", game.get_viewport().get_camera_2d())

@@ -37,6 +37,10 @@ def tone(name, duration, seed, kind):
             value = (low + 0.45 * math.sin(2 * math.pi * 74 * t) + 0.12 * math.sin(2 * math.pi * 187 * t)) * math.exp(-x * 7)
         elif kind == 'block':
             value = (0.15 * low + sum(math.sin(2 * math.pi * f * t) for f in (410, 617, 1041)) / 3) * math.exp(-x * 6)
+        elif kind == 'toll':
+            # Inharmonic bell partials with a soft strike and long decay.
+            partials = ((1.0, 1.0, 1.6), (2.0, 0.55, 2.4), (2.4, 0.45, 3.0), (3.0, 0.3, 4.0), (4.2, 0.2, 5.5))
+            value = sum(a * math.sin(2 * math.pi * 196 * f * t) * math.exp(-x * d) for f, a, d in partials) / 2.5 + 0.08 * low * math.exp(-x * 30)
         elif kind == 'magic':
             value = (0.3 * low + math.sin(2 * math.pi * (420 * t + 170 * t * t)) * 0.6) * math.sin(math.pi * x) ** 2
         else:
@@ -75,11 +79,11 @@ def main():
     ROOT.mkdir(exist_ok=True)
     for index in range(3):
         tone(f'step_{index}', 0.13, 400 + index, 'step')
-    for index, (name, duration) in enumerate((('swing', 0.2), ('dodge', 0.25), ('arrow', 0.15), ('impact', 0.24), ('block', 0.38), ('magic', 0.4), ('heal', 0.85), ('collect', 0.35), ('ui', 0.07))):
+    for index, (name, duration) in enumerate((('swing', 0.2), ('dodge', 0.25), ('arrow', 0.15), ('impact', 0.24), ('block', 0.38), ('magic', 0.4), ('heal', 0.85), ('collect', 0.35), ('ui', 0.07), ('toll', 1.6))):
         tone(name, duration, 500 + index, name)
     for index, name in enumerate(('wind', 'rain', 'room', 'fire')):
         atmosphere(name, 700 + index, name)
-    print('Generated 16 original PCM audio assets')
+    print('Generated 17 original PCM audio assets')
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@ extends RefCounted
 
 const REGIONS := {
 	"crossing": {
+		"extra_exits": [{"point": Vector2(1120, 425), "destination": "undercroft", "arrival": Vector2(240, 650), "label": "TO_UNDERCROFT", "direction": -1}],
 		"location": "LOCATION", "description": "REGION", "camp": Vector2(440, 470),
 		"event_point": Vector2(650, 600), "merchant": Vector2(235, 500), "keeper": Vector2(520, 490), "mentor": Vector2(600, 600), "exit": Vector2(1800, 500), "destination": "lake",
 		"arrival": Vector2(230, 650), "exit_label": "TO_LAKE",
@@ -96,6 +97,16 @@ const REGIONS := {
 		"chests": [{"id": "waterworks_flight", "point": Vector2(1640, 320), "required_form": "bat", "items": {"coin": 6}},
 			{"id": "waterworks_mist", "point": Vector2(940, 1011), "required_form": "mist", "items": {"coin": 8}},
 			{"id": "waterworks_supplies", "point": Vector2(1660, 1020), "requires": ["waterworks_guardian"], "items": {"coin": 18, "potion": 2}}]
+	},
+	"undercroft": {
+		"indoor": true, "location": "LOCATION_UNDERCROFT", "description": "REGION_UNDERCROFT", "camp": Vector2(330, 820),
+		"exit": Vector2(135, 650), "destination": "crossing", "arrival": Vector2(1120, 500), "exit_label": "TO_CROSSING",
+		"extra_camps": [{"point": Vector2(1030, 320), "requires_opened": "accord_renewal"}],
+		"herbs": [Vector2(420, 1060), Vector2(640, 1080)],
+		"enemies": [["undercroft_echo_1", Vector2(700, 500), "echo"], ["undercroft_echo_2", Vector2(980, 660), "echo"], ["undercroft_echo_3", Vector2(900, 1000), "echo"], ["undercroft_bell", Vector2(1455, 705), "bell"]],
+		"knell_sites": {"hall": Vector2(430, 330), "gallery": Vector2(650, 300), "ossuary": Vector2(1020, 1100)},
+		"chests": [{"id": "knell_supplies", "point": Vector2(330, 480), "requires_opened": ["accord_community"], "items": {"herb": 2, "potion": 1}},
+			{"id": "knell_cache", "point": Vector2(1700, 1090), "requires": ["undercroft_bell"], "items": {"coin": 14, "potion": 1}}]
 	},
 	"ruins": {
 		"indoor": true, "location": "LOCATION_RUINS", "description": "REGION_RUINS", "camp": Vector2(290, 870),

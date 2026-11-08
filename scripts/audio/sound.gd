@@ -1,7 +1,7 @@
 extends Node
 const Regions = preload("res://scripts/world/region_catalog.gd")
 const Clock = preload("res://scripts/world/living/world_clock.gd")
-const SAMPLE_NAMES := ["step_0", "step_1", "step_2", "swing", "dodge", "arrow", "impact", "block", "magic", "heal", "collect", "ui"]
+const SAMPLE_NAMES := ["step_0", "step_1", "step_2", "swing", "dodge", "arrow", "impact", "block", "magic", "heal", "collect", "ui", "toll"]
 const ATMOSPHERE_NAMES := ["wind", "rain", "room", "fire"]
 var samples := {}
 var atmosphere := {}

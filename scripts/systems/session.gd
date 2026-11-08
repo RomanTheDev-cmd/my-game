@@ -1,4 +1,5 @@
 extends Node
+const Knell = preload("res://scripts/quests/knell_rules.gd")
 const Accord = preload("res://scripts/quests/accord_rules.gd")
 const Rescue = preload("res://scripts/quests/rescue_rules.gd")
 const Preparation = preload("res://scripts/quests/preparation_rules.gd")
@@ -144,6 +145,9 @@ func advance_quest(event: String) -> bool:
 
 func travel(destination: String, position: Vector2, current_vitals: Dictionary = {}) -> bool:
 	if not Regions.valid(destination):
+		return false
+	if destination == Knell.REGION and not Knell.can_enter(gathered):
+		notice.emit("KNELL_DOOR_LOCKED")
 		return false
 	var data := snapshot(position, current_vitals)
 	data.region = destination
@@ -609,4 +613,24 @@ func accord_event(event: String, position: Vector2, current_vitals: Dictionary) 
 		return false
 	apply(data)
 	notice.emit("ACCORD_SAVED")
+	return true
+
+func knell_event(event: String, position: Vector2, current_vitals: Dictionary) -> bool:
+	var result := Knell.resolve(nature, gathered, defeated, opened, inventory, gear_owned, current_vitals, event, region)
+	if result.is_empty(): return false
+	var data := snapshot(position, result.vitals)
+	data.gathered = result.gathered
+	data.defeated = result.defeated
+	data.opened = result.opened
+	data.inventory = result.inventory
+	data.gear_owned = result.owned
+	data.xp = mini(100000, xp + result.xp)
+	data.world_state.reputation = Factions.change(world_state.reputation, result.trust)
+	if Store.write_game(data) != OK:
+		notice.emit("SAVE_FAILED")
+		return false
+	var previous_level := Skills.level(xp)
+	apply(data)
+	if Skills.level(xp) > previous_level: notice.emit("LEVEL_UP")
+	notice.emit("KNELL_SAVED")
 	return true

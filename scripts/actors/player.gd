@@ -34,6 +34,8 @@ var step_distance := 0.0
 var shield_strength := 0.0
 var shield_time := 0.0
 var shield_recharge := 0.0
+var ringing_time := 0.0
+const RINGING := 3.0
 
 func _ready() -> void:
 	collision_layer = 2
@@ -93,7 +95,7 @@ func _physics_process(delta: float) -> void:
 			Sound.footstep(global_position)
 	else:
 		step_distance = 0
-	stamina = minf(100, stamina + delta * (10 if blocking else 24))
+	stamina = minf(100, stamina + delta * (10 if blocking else 24) * (0.5 if ringing_time > 0 else 1.0))
 	var exposed := Nature.sunlight(Session.nature, Clock.daylight(Session.world_state.minutes), Regions.get_region(Session.region).get("indoor", false)) > 1
 	mana = minf(100, mana + delta * (0.8 if exposed else 2.0))
 	health = minf(100, health + delta * Nature.regeneration(Session.nature, Session.world_state.minutes))
@@ -133,8 +135,9 @@ func advance_timers(delta: float) -> void:
 	attack_cooldown = maxf(0, attack_cooldown - delta)
 	dodge_time = maxf(0, dodge_time - delta)
 	hurt_time = maxf(0, hurt_time - delta)
+	ringing_time = maxf(0, ringing_time - delta)
 
-func receive_damage(amount: float) -> void:
+func receive_damage(amount: float, effect: String = "") -> void:
 	if health <= 0 or hurt_time > 0:
 		return
 	var armor: float = 0.0 if Session.nature.kind == "werewolf" and Session.nature.form != "human" else Gear.reduction(Session.equipped)
@@ -152,6 +155,8 @@ func receive_damage(amount: float) -> void:
 	if guarded:
 		stamina = maxf(0, stamina - 23)
 	health = maxf(0, health - hit)
+	# A bell's ring dulls an unguarded body; mist has nothing to resonate.
+	if effect == "ringing" and hit > 0 and not guarded and Session.nature.form != "mist": ringing_time = maxf(ringing_time, RINGING)
 	hurt_time = 0.45
 	modulate = Color("b7dce3") if hit == 0 else Color(1.7, 0.55, 0.55)
 	stats_changed.emit()
@@ -168,6 +173,7 @@ func restore() -> void:
 	attack_cooldown = 0
 	hurt_time = 0
 	dodge_time = 0
+	ringing_time = 0
 	health = 100
 	stamina = 100
 	mana = 100
@@ -243,6 +249,8 @@ func cast_magic(id: String) -> bool:
 		shield_recharge = result.recharge
 	else:
 		modulate = Color(1, 1.4, 1.15)
+		# Healing light also clears the ringing of a bell.
+		ringing_time = 0
 	stats_changed.emit()
 	return true
 
@@ -275,7 +283,7 @@ func weapon_stats() -> Dictionary:
 		"battle": return {"damage": 46.0, "reach": 58.0, "cooldown": 0.5}
 	return Gear.weapon(Session.equipped)
 func movement_speed() -> float:
-	return {"bat": 190.0, "mist": 135.0, "wolf": 175.0, "hybrid": 125.0, "battle": 145.0}.get(Session.nature.form, 115.0)
+	return {"bat": 190.0, "mist": 135.0, "wolf": 175.0, "hybrid": 125.0, "battle": 145.0}.get(Session.nature.form, 115.0) * (0.7 if ringing_time > 0 else 1.0)
 func visibility_scale() -> float:
 	return 0.35 if Session.nature.form == "mist" else 1.0
 
@@ -299,6 +307,7 @@ func use_nature_power() -> bool:
 		stamina -= 20
 		health = minf(100, health + 12)
 		scent_time = 12
+		ringing_time = 0
 		nature_cooldown = 8
 		howled.emit(global_position)
 		Sound.play_at("magic", global_position)

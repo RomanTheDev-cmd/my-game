@@ -68,6 +68,13 @@ func _draw() -> void:
 		for point in preparation.CONTROLS.values():
 			var mark := project(point)
 			draw_rect(Rect2(mark - Vector2(3, 3), Vector2(6, 6)), Color("cfbf8a"), false, 1)
+	if region == "undercroft":
+		var knell = preload("res://scripts/quests/knell_rules.gd")
+		var sites: Dictionary = Regions.get_region(region).knell_sites
+		for id in sites:
+			var mark := project(sites[id])
+			draw_rect(Rect2(mark - Vector2(3, 4), Vector2(6, 8)), Color("e9bd77") if "knell:plaque:" + id in Session.gathered else Color("9aa59c"))
+		if knell.BELL not in Session.defeated: draw_circle(project(Vector2(1455, 705)), 5, Color("cdbb8a"))
 	if region == "underhall":
 		for point in preload("res://scripts/quests/rescue_rules.gd").COILS.values(): draw_circle(project(point), 4, Color("d2b88c"))
 	var definition := Regions.get_region(region)

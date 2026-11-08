@@ -7,6 +7,7 @@ const Nature = preload("res://scripts/nature/nature_rules.gd")
 const NatureScreen = preload("res://scripts/ui/nature_screen.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
 const AccordScreen = preload("res://scripts/ui/accord_screen.gd")
+const KnellScreen = preload("res://scripts/ui/knell_screen.gd")
 const RescueScreen = preload("res://scripts/ui/rescue_screen.gd")
 const PreparationScreen = preload("res://scripts/ui/preparation_screen.gd")
 const JunctionScreen = preload("res://scripts/ui/junction_screen.gd")
@@ -310,6 +311,7 @@ func show_journal() -> void:
 	PreparationScreen.journal(self, contents)
 	RescueScreen.journal(self, contents)
 	AccordScreen.journal(self, contents)
+	KnellScreen.journal(self, contents)
 	CityScreen.journal(self, contents)
 	ForestScreen.journal(self, contents)
 	CampaignScreen.journal(self, contents)
@@ -337,11 +339,14 @@ func show_journal() -> void:
 	_button("BACK", resume).grab_focus()
 
 func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void:
-	var role := kind.trim_prefix("commission:").trim_prefix("reaction:").trim_prefix("community:").trim_prefix("story:").trim_prefix("forest:").trim_prefix("city:").trim_prefix("junction:").trim_prefix("preparation:").trim_prefix("rescue:").trim_prefix("accord:")
+	var role := kind.trim_prefix("commission:").trim_prefix("reaction:").trim_prefix("community:").trim_prefix("story:").trim_prefix("forest:").trim_prefix("city:").trim_prefix("junction:").trim_prefix("preparation:").trim_prefix("rescue:").trim_prefix("accord:").trim_prefix("knell:")
 	if kind == "merchant_closed": role = "merchant"
 	if kind == "junction:invite": role = "mentor"
 	if not bypass_reaction and DialogueRules.GROUPS.has(role) and DialogueRules.context(Session.nature) != "":
 		DialogueScreen.show_page(self, role, kind if not kind.begins_with("reaction:") else "")
+		return
+	if kind.begins_with("knell:"):
+		KnellScreen.show_page(self, kind.trim_prefix("knell:"))
 		return
 	if kind.begins_with("accord:"):
 		AccordScreen.show_page(self, kind.trim_prefix("accord:"))
@@ -417,6 +422,7 @@ func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void
 	if "werewolf" in Session.nature.history:
 		_button("PACK_TITLE", show_pack.bind("keeper")).name = "pack_keeper"
 	CampaignScreen.entry(self, screen)
+	KnellScreen.entry(self, screen)
 	CommunityScreen.entry(self, "keeper", screen)
 	_button("LATER" if Session.quest == 0 else "CLOSE", resume)
 	_focus_first()
@@ -519,6 +525,7 @@ func update_hud() -> void:
 	if not world.definition.get("indoor", false):
 		region_label.text += " · " + tr("WEATHER_" + weather.to_upper())
 	shield_label.text = tr("AEGIS_STATUS") % [roundi(world.player.shield_strength), world.player.shield_time] if world.player.shield_time > 0 and world.player.shield_strength > 0 else ""
+	if world.player.ringing_time > 0: shield_label.text = (shield_label.text + " · " if shield_label.text != "" else "") + tr("RINGING_STATUS") % world.player.ringing_time
 	health_bar.value = world.player.health
 	stamina_bar.value = world.player.stamina
 	mana_bar.value = world.player.mana
@@ -529,6 +536,10 @@ func update_hud() -> void:
 	if boss_panel.visible:
 		boss_bar.value = 100.0 * world.boss.health / world.boss.max_health
 		boss_title.text = tr("TRIAL_RECORD" if world.boss.awaiting_record else "TRIAL_BOSS_PHASE_%d" % world.boss.phase)
+	elif is_instance_valid(world.bell) and world.bell.armed and (world.bell.engaged or world.bell.awaiting_record):
+		boss_panel.visible = true
+		boss_bar.value = 100.0 * world.bell.health / world.bell.max_health
+		boss_title.text = tr("KNELL_RECORD" if world.bell.awaiting_record else "KNELL_BOSS_PHASE_%d" % world.bell.phase)
 	var commission_stage := int(Session.world_state.commission.stage)
 	if commission_stage > 0 and (commission_stage < 6 or Session.aid_quest != 1):
 		quest_label.text = tr("COMMISSION_HINT_%d" % commission_stage)
@@ -556,6 +567,11 @@ func update_hud() -> void:
 	if "prep:accepted" in Session.gathered: quest_label.text = tr("PREP_HINT_%d" % PreparationScreen.Rules.stage(Session.gathered, Session.opened))
 	if "rescue:accepted" in Session.gathered: quest_label.text = tr("RESCUE_HINT_%d" % RescueScreen.Rules.stage(Session.gathered, Session.opened))
 	if AccordScreen.Rules.ready(Session.gathered, Session.opened): quest_label.text = tr("ACCORD_HINT_%d" % AccordScreen.Rules.stage(Session.gathered, Session.opened))
+	var knell_stage := KnellScreen.Rules.stage(Session.gathered, Session.defeated, Session.opened)
+	if KnellScreen.Rules.available(Session.opened) and knell_stage < 4 and (knell_stage > 0 or quest_label.text == tr("ACCORD_HINT_4")):
+		quest_label.text = tr(KnellScreen.hud(knell_stage))
+		if knell_stage == 1: quest_label.text = quest_label.text % [KnellScreen.Rules.read_count(Session.gathered), KnellScreen.Rules.PLAQUES.size()]
+	if is_instance_valid(world.bell) and world.bell.awaiting_record: quest_label.text = tr("KNELL_RECORD_HELP")
 	if is_instance_valid(world.boss) and world.boss.awaiting_record:
 		quest_label.text = tr("TRIAL_RECORD_HELP")
 	var near: String = world.nearby_key()

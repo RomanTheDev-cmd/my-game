@@ -1,4 +1,10 @@
 extends Node2D
+const Knell = preload("res://scripts/quests/knell_rules.gd")
+const Undercroft = preload("res://scripts/world/undercroft_landscape.gd")
+const EchoEnemy = preload("res://scripts/actors/echo_enemy.gd")
+const BellBoss = preload("res://scripts/actors/bell_boss.gd")
+const KnellPlaque = preload("res://scripts/world/knell_plaque.gd")
+const KnellCue = preload("res://scripts/world/knell_cue.gd")
 const Accord = preload("res://scripts/quests/accord_rules.gd")
 const AccordChanges = preload("res://scripts/world/accord_changes.gd")
 const Rescue = preload("res://scripts/quests/rescue_rules.gd")
@@ -55,6 +61,9 @@ const Landscape = preload("res://scripts/world/landscape.gd")
 signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
+var bell: CharacterBody2D
+var knell_plaques: Dictionary = {}
+var knell_cue: Node2D
 var rescue_engine: Node2D
 var rescue_coils: Dictionary = {}
 var preparation_route: Node2D
@@ -92,7 +101,7 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = Underhall.new() if Session.region == "underhall" else Rotunda.new() if Session.region == "rotunda" else CityLandscape.new() if Session.region == "velshof" else Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
+	landscape = Undercroft.new() if Session.region == "undercroft" else Underhall.new() if Session.region == "underhall" else Rotunda.new() if Session.region == "rotunda" else CityLandscape.new() if Session.region == "velshof" else Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
@@ -137,6 +146,16 @@ func _ready() -> void:
 		device.position = definition.story_sites[id]
 		add_child(device)
 		campaign_devices[id] = device
+	for id in definition.get("knell_sites", {}):
+		var plaque := KnellPlaque.new()
+		plaque.position = definition.knell_sites[id]
+		add_child(plaque)
+		knell_plaques[id] = plaque
+	if Session.region == "crossing":
+		knell_cue = KnellCue.new()
+		knell_cue.position = Vector2(1120, 300)
+		knell_cue.z_index = 3
+		add_child(knell_cue)
 	for id in definition.get("field_sites", {}):
 		var device := FieldDevice.new()
 		device.kind = id
@@ -217,12 +236,17 @@ func _ready() -> void:
 		if entry[0] in Session.defeated:
 			continue
 		var kind: String = entry[2] if entry.size() > 2 else "melee"
-		var enemy = BossEnemy.new() if kind == "boss" else (RangedEnemy.new() if kind == "ranged" else (HeavyEnemy.new() if kind == "heavy" else Enemy.new()))
+		var enemy = BellBoss.new() if kind == "bell" else EchoEnemy.new() if kind == "echo" else BossEnemy.new() if kind == "boss" else (RangedEnemy.new() if kind == "ranged" else (HeavyEnemy.new() if kind == "heavy" else Enemy.new()))
 		enemy.id = entry[0]
 		enemy.position = entry[1]
 		enemy.target = player
 		enemy.navigation = navigation
-		if kind == "boss":
+		if kind == "bell":
+			bell = enemy
+			bell.armed = Knell.armed(Session.gathered, Session.defeated)
+			bell.cover_rects = Undercroft.PILLARS
+			bell.victory_requested.connect(record_bell_victory)
+		elif kind == "boss":
 			boss = enemy
 			boss.armed = "waterworks:awakened" in Session.gathered
 			boss.victory_requested.connect(record_boss_victory)
@@ -237,6 +261,8 @@ func _ready() -> void:
 	_update_npcs()
 	_update_event_marker()
 	_sync_context()
+	Session.changed.connect(_update_knell_environment)
+	_update_knell_environment()
 	Session.changed.connect(_update_preparation_environment)
 	_update_preparation_environment()
 	Session.changed.connect(_update_junction_environment)
@@ -292,6 +318,7 @@ func _process(delta: float) -> void:
 func safe_to_rest() -> bool:
 	if is_instance_valid(rescue_engine) and rescue_engine.dangerous(player.position): return false
 	if is_instance_valid(boss) and (boss.awaiting_record or boss.engaged): return false
+	if is_instance_valid(bell) and (bell.awaiting_record or bell.engaged): return false
 	for child in get_children():
 		if child is BossEnemy and not child.armed: continue
 		if child is Enemy and child.global_position.distance_to(player.global_position) < child.aggro_range + 20:
@@ -311,6 +338,10 @@ func save_safe() -> void:
 func nearby_key() -> String:
 	if is_instance_valid(boss) and boss.awaiting_record and player.position.distance_to(boss.position) < 65:
 		return "TRIAL_RECORD"
+	if is_instance_valid(bell) and bell.awaiting_record and player.position.distance_to(bell.position) < 80:
+		return "KNELL_RECORD"
+	for id in knell_plaques:
+		if player.position.distance_to(knell_plaques[id].position) < 45: return "KNELL_PLAQUE_" + id.to_upper()
 	for kind in trial_markers:
 		if player.position.distance_to(trial_markers[kind].position) < 48:
 			return "TRIAL_SITE_" + kind.to_upper()
@@ -372,6 +403,16 @@ func interact() -> void:
 	_update_tracking()
 	_sync_context()
 	var key := nearby_key()
+	if key == "KNELL_RECORD":
+		record_bell_victory()
+		return
+	if key.begins_with("KNELL_PLAQUE_"):
+		if Session.nature.form != "human": Session.notice.emit("NATURE_RETURN_FORM")
+		else: dialog_requested.emit("knell:plaque_" + key.trim_prefix("KNELL_PLAQUE_").to_lower())
+		return
+	if key == "TO_UNDERCROFT" and not Knell.can_enter(Session.gathered):
+		Session.notice.emit("KNELL_DOOR_LOCKED")
+		return
 	if Accord.ready(Session.gathered, Session.opened) and (key == "MENTOR_NAME" or (Session.region == "rotunda" and key in ["STEWARD_NAME", "WITNESS_NAME", "CRAFTER_NAME", "JOINT_SITE_TABLE"])):
 		var target := "table" if key == "JOINT_SITE_TABLE" else key.trim_suffix("_NAME").to_lower()
 		dialog_requested.emit("accord:" + target)
@@ -503,6 +544,9 @@ func _on_strike(origin: Vector2, direction: Vector2) -> void:
 			var offset: Vector2 = child.global_position - origin
 			if offset.length() < player.weapon_stats().reach and offset.normalized().dot(direction) > 0.15 and navigation.segment_clear(origin, child.global_position):
 				child.receive_damage(player.weapon_stats().damage + 4 * int(Session.skills.get("sword", 0)), direction)
+				# The bell tongue's heavy note briefly staggers whoever it strikes.
+				var stagger: float = Gear.weapon(Session.equipped).get("stagger", 0.0) if Session.nature.form == "human" else 0.0
+				if stagger > 0 and is_instance_valid(child) and child.health > 0: child.apply_slow(stagger, 0.6)
 
 func _on_defeated(id: String) -> void:
 	if id not in Session.defeated:
@@ -831,7 +875,9 @@ func _update_tracking() -> void:
 		tracking_cue.queue_redraw()
 func _on_howl(origin: Vector2) -> void:
 	for child in get_children():
-		if child is Enemy and child.health > 0 and child.position.distance_to(origin) < 150 and navigation.segment_clear(origin, child.position): child.apply_slow(3, 0.55)
+		if child is Enemy and child.health > 0 and child.position.distance_to(origin) < 150 and navigation.segment_clear(origin, child.position):
+			child.apply_slow(3, 0.55)
+			if child is EchoEnemy: child.disrupt()
 	_update_tracking()
 
 func landing_safe(point: Vector2) -> bool:
@@ -1151,4 +1197,39 @@ func _update_accord_environment() -> void:
 	AccordChanges.apply(self)
 	for chest in chests:
 		if Accord.CACHES.values().any(func(entry): return entry.id == chest.get_meta("definition").id): chest.visible = "accord_community" in Session.opened
+	landscape.queue_redraw()
+
+func can_knell(event: String) -> bool:
+	if not Knell.SITES.has(event) or player.health <= 0 or player.attack_time > 0 or player.dodge_time > 0 or not safe_to_rest(): return false
+	var site: Array = Knell.SITES[event]
+	if Session.region != site[0]: return false
+	var point: Vector2 = npcs[site[1]].position if npcs.has(site[1]) and npcs[site[1]].visible else definition.get("knell_sites", {}).get(site[1], Vector2.INF)
+	return player.position.distance_to(point) < 52 and navigation.segment_clear(player.position, point) and not Knell.resolve(Session.nature, Session.gathered, Session.defeated, Session.opened, Session.inventory, Session.gear_owned, player_vitals(), event, Session.region).is_empty()
+func knell_action(event: String) -> bool:
+	if not can_knell(event): return false
+	_sync_context()
+	if not Session.knell_event(event, player.position, player_vitals()): return false
+	Sound.play_at("collect", player.position)
+	if event.begins_with("read_") and Knell.armed(Session.gathered, Session.defeated): Session.notice.emit("KNELL_GRATE_OPEN")
+	return true
+func record_bell_victory() -> void:
+	if not is_instance_valid(bell) or not bell.awaiting_record or player.health <= 0: return
+	_sync_context()
+	if Session.knell_event("silence", player.position, player_vitals()):
+		bell.queue_free()
+		bell = null
+func _update_knell_environment() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	for id in knell_plaques:
+		knell_plaques[id].read = "knell:plaque:" + id in Session.gathered
+		knell_plaques[id].queue_redraw()
+	if is_instance_valid(bell): bell.armed = Knell.armed(Session.gathered, Session.defeated)
+	if Session.region == Knell.REGION and not Undercroft.grate_closed():
+		var removed := false
+		for body in get_children():
+			if body is StaticBody2D and body.has_meta("knell_grate"):
+				remove_child(body)
+				body.queue_free()
+				removed = true
+		if removed: navigation.configure(self)
 	landscape.queue_redraw()

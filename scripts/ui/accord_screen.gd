@@ -1,5 +1,6 @@
 extends RefCounted
 const Rules = preload("res://scripts/quests/accord_rules.gd")
+const Knell = preload("res://scripts/quests/knell_rules.gd")
 const Text = preload("res://scripts/ui/campaign_screen.gd")
 const History = preload("res://scripts/ui/junction_screen.gd")
 static func show_page(ui: Node, target: String = "mentor", confirm: String = "") -> void:
@@ -25,6 +26,7 @@ static func show_page(ui: Node, target: String = "mentor", confirm: String = "")
 	if outcome != "":
 		Text.text(ui, contents, "ACCORD_EPILOGUE_" + outcome.to_upper(), 18).name = "accord_epilogue"
 		Text.text(ui, contents, "ACCORD_EFFECT_" + outcome.to_upper(), 16)
+		if target == "mentor" and Knell.outcome(Session.opened) != "": Text.text(ui, contents, "KNELL_MENTOR_" + Knell.outcome(Session.opened).to_upper(), 16).name = "knell_mentor"
 	else:
 		Text.text(ui, contents, "ACCORD_DIALOG_" + target.to_upper(), 18)
 		if target == "mentor":

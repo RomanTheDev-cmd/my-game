@@ -29,7 +29,8 @@ func _physics_process(delta: float) -> void:
 			hit.collider.receive_spell(kind, damage)
 		elif hit.collider.has_method("receive_damage"):
 			var previous_health: float = hit.collider.health
-			hit.collider.receive_damage(damage, direction)
+			var amount: float = damage * (hit.collider.spell_multiplier(kind) if hit.collider.has_method("spell_multiplier") else 1.0)
+			hit.collider.receive_damage(amount, direction)
 			if kind == "blood" and hit.collider.health < previous_health:
 				blood_drained.emit(minf(18, (previous_health - maxf(0, hit.collider.health)) * 0.75))
 			if kind == "frost" and hit.collider.has_method("apply_slow"):
