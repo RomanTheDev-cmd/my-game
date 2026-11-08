@@ -228,6 +228,10 @@ func _draw_ruins() -> void:
 		draw_rect(Rect2(x, 48, 40, 32), Color("263742"))
 		draw_rect(Rect2(x + 5, 53, 13, 25), Color("65959a"))
 		draw_rect(Rect2(x + 21, 53, 13, 25), Color("b9a173"))
+	# Collapsed stairway down to the hollows.
+	draw_rect(Rect2(1730, 965, 80, 70), Color("1b2124"))
+	for i in 4: draw_rect(Rect2(1734 + i * 6, 971 + i * 14, 72 - i * 12, 8), Color("59605d"))
+	draw_rect(Rect2(1726, 961, 88, 4), Color("81867b"))
 	for point in [Vector2(580, 540), Vector2(580, 740), Vector2(1140, 430), Vector2(1140, 760), Vector2(1530, 590)]:
 		draw_circle(point + Vector2(0, -10), 22, Color(0.82, 0.64, 0.34, 0.09))
 		draw_rect(Rect2(point - Vector2(3, 9), Vector2(6, 10)), Color("b7ab85"))

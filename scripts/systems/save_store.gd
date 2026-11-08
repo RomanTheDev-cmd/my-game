@@ -1,4 +1,5 @@
 extends RefCounted
+const Delve = preload("res://scripts/quests/delve_rules.gd")
 const Knell = preload("res://scripts/quests/knell_rules.gd")
 const Accord = preload("res://scripts/quests/accord_rules.gd")
 const Rescue = preload("res://scripts/quests/rescue_rules.gd")
@@ -145,6 +146,7 @@ static func validate(data: Variant) -> bool:
 	if not Community.valid(data.nature, data.gathered, data.opened): return false
 	if not Accord.valid(data.nature, data.gathered, data.opened): return false
 	if not Knell.valid(data.nature, data.gathered, data.defeated, data.opened, data.gear_owned, data.region): return false
+	if not Delve.valid(data.world_state, data.region, data.gathered, data.defeated, data.opened, data.gear_owned): return false
 	if data.defeated.any(func(flag): return flag.begins_with("accord:") or flag.begins_with("accord_") or Accord.CACHES.values().any(func(entry): return entry.id == flag)): return false
 	if not Rescue.valid(data.nature, data.gathered, data.opened): return false
 	if data.defeated.any(func(flag): return flag.begins_with("rescue:") or flag.begins_with("rescue_")): return false

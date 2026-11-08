@@ -1038,6 +1038,7 @@ func capture() -> void:
 	game.show_journal()
 	await shot("accord_journal")
 	await capture_knell(game, session)
+	await capture_delve(game, session)
 	print("CAPTURE_OK")
 	await TestExit.finish(self)
 func shot(file: String, camera: Camera2D = null) -> void:
@@ -1138,3 +1139,29 @@ func capture_knell(game: Node, session: Node) -> void:
 		return
 	await knell_world(game, session, "undercroft", Vector2(1080, 1000))
 	await shot("knell_passage_release", game.get_viewport().get_camera_2d())
+func capture_delve(game: Node, session: Node) -> void:
+	session.fresh()
+	session.world_state["delve_seed"] = 424242
+	session.opened.append_array(["delve_keystone_1", "delve_keystone_2"])
+	await knell_world(game, session, "ruins", Vector2(1640, 980))
+	await shot("delve_entrance", game.get_viewport().get_camera_2d())
+	for depth in [1, 2, 3]:
+		await knell_world(game, session, "hollow_%d" % depth, Vector2(330, 680))
+		await shot("delve_depth_%d" % depth, game.get_viewport().get_camera_2d())
+		game.show_map()
+		await shot("delve_map_%d" % depth)
+		game.resume()
+	await knell_world(game, session, "hollow_1", Vector2(250, 680))
+	game.world.player.position = game.world.definition.note + Vector2(0, 25)
+	game.world.interact()
+	await shot("delve_note")
+	game.resume()
+	var room: Vector2 = game.world.DelveGenerator.cell_center(game.world.definition.keystone)
+	game.world.player.position = room + Vector2(0, 30)
+	await shot("delve_keystone_room", game.get_viewport().get_camera_2d())
+	var rubble: Rect2 = game.world.definition.rubble[0]
+	game.world.player.position = rubble.get_center() + (Vector2(-50, 0) if rubble.size.x < rubble.size.y else Vector2(0, -50))
+	await shot("delve_rubble", game.get_viewport().get_camera_2d())
+	game.show_journal()
+	await shot("delve_journal")
+	game.resume()

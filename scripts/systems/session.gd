@@ -1,4 +1,5 @@
 extends Node
+const Delve = preload("res://scripts/quests/delve_rules.gd")
 const Knell = preload("res://scripts/quests/knell_rules.gd")
 const Accord = preload("res://scripts/quests/accord_rules.gd")
 const Rescue = preload("res://scripts/quests/rescue_rules.gd")
@@ -65,6 +66,8 @@ func _ready() -> void:
 func fresh() -> void:
 	nature = Nature.defaults()
 	world_state = WorldState.defaults()
+	# Each new playthrough digs different hollows.
+	world_state["delve_seed"] = randi_range(1, 2147483646)
 	xp = 0
 	skills = {}
 	vitals = FULL_VITALS.duplicate()
@@ -148,6 +151,9 @@ func travel(destination: String, position: Vector2, current_vitals: Dictionary =
 		return false
 	if destination == Knell.REGION and not Knell.can_enter(gathered):
 		notice.emit("KNELL_DOOR_LOCKED")
+		return false
+	if Delve.depth_of(destination) > 0 and not Delve.can_enter(Delve.depth_of(destination), opened):
+		notice.emit("DELVE_SEALED")
 		return false
 	var data := snapshot(position, current_vitals)
 	data.region = destination

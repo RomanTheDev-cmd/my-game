@@ -9,6 +9,7 @@ const ITEMS := {
 	"watch_spear": {"slot": "weapon", "damage": 32.0, "reach": 86.0, "cooldown": 0.6, "two_handed": true, "price": 19, "sell": 6, "vendor": "wardens"},
 	"bell_tongue": {"slot": "weapon", "damage": 38.0, "reach": 54.0, "cooldown": 0.55, "price": 30, "sell": 9, "vendor": "unique", "stagger": 1.2},
 	"polearm": {"slot": "weapon", "damage": 44.0, "reach": 70.0, "cooldown": 0.7, "two_handed": true, "price": 20, "sell": 7},
+	"deep_mail": {"slot": "armor", "reduction": 0.3, "price": 30, "sell": 9, "vendor": "unique"},
 	"cloth": {"slot": "armor", "reduction": 0.0, "price": 4, "sell": 1},
 	"quilted": {"slot": "armor", "reduction": 0.12, "price": 10, "sell": 3},
 	"chain": {"slot": "armor", "reduction": 0.24, "price": 20, "sell": 7},

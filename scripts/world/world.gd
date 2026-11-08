@@ -1,4 +1,9 @@
 extends Node2D
+const Delve = preload("res://scripts/quests/delve_rules.gd")
+const DelveGenerator = preload("res://scripts/world/delve_generator.gd")
+const Hollow = preload("res://scripts/world/hollow_landscape.gd")
+const HollowWarden = preload("res://scripts/actors/hollow_warden.gd")
+const DelveMarker = preload("res://scripts/world/delve_marker.gd")
 const Knell = preload("res://scripts/quests/knell_rules.gd")
 const Undercroft = preload("res://scripts/world/undercroft_landscape.gd")
 const EchoEnemy = preload("res://scripts/actors/echo_enemy.gd")
@@ -62,6 +67,8 @@ signal dialog_requested(kind: String)
 signal travel_requested(destination: String, position: Vector2)
 signal player_died
 var bell: CharacterBody2D
+var delve_stairs: Node2D
+var delve_note: Node2D
 var knell_plaques: Dictionary = {}
 var knell_cue: Node2D
 var rescue_engine: Node2D
@@ -101,7 +108,9 @@ var encounter_checkpoints: Dictionary = {}
 func _ready() -> void:
 	y_sort_enabled = true
 	definition = Regions.get_region(Session.region)
-	landscape = Undercroft.new() if Session.region == "undercroft" else Underhall.new() if Session.region == "underhall" else Rotunda.new() if Session.region == "rotunda" else CityLandscape.new() if Session.region == "velshof" else Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
+	if definition.get("generated", false):
+		definition.merge(DelveGenerator.generate(Delve.seed_of(Session.world_state), Delve.depth_of(Session.region)), true)
+	landscape = Hollow.new() if definition.get("generated", false) else Undercroft.new() if Session.region == "undercroft" else Underhall.new() if Session.region == "underhall" else Rotunda.new() if Session.region == "rotunda" else CityLandscape.new() if Session.region == "velshof" else Woodroad.new() if Session.region == "woodroad" else Terrace.new() if Session.region == "terrace" else Haven.new() if Session.region == "haven" else Thicket.new() if Session.region == "thicket" else (Waterworks.new() if Session.region == "waterworks" else (Workshop.new() if Session.region == "workshop" else Landscape.new()))
 	landscape.region = Session.region
 	landscape.z_index = -2
 	add_child(landscape)
@@ -146,6 +155,15 @@ func _ready() -> void:
 		device.position = definition.story_sites[id]
 		add_child(device)
 		campaign_devices[id] = device
+	if definition.has("stairs"):
+		delve_stairs = DelveMarker.new()
+		delve_stairs.position = definition.stairs
+		add_child(delve_stairs)
+	if definition.has("note"):
+		delve_note = DelveMarker.new()
+		delve_note.kind = "note"
+		delve_note.position = definition.note
+		add_child(delve_note)
 	for id in definition.get("knell_sites", {}):
 		var plaque := KnellPlaque.new()
 		plaque.position = definition.knell_sites[id]
@@ -236,7 +254,7 @@ func _ready() -> void:
 		if entry[0] in Session.defeated:
 			continue
 		var kind: String = entry[2] if entry.size() > 2 else "melee"
-		var enemy = BellBoss.new() if kind == "bell" else EchoEnemy.new() if kind == "echo" else BossEnemy.new() if kind == "boss" else (RangedEnemy.new() if kind == "ranged" else (HeavyEnemy.new() if kind == "heavy" else Enemy.new()))
+		var enemy = HollowWarden.new() if kind == "warden" else BellBoss.new() if kind == "bell" else EchoEnemy.new() if kind == "echo" else BossEnemy.new() if kind == "boss" else (RangedEnemy.new() if kind == "ranged" else (HeavyEnemy.new() if kind == "heavy" else Enemy.new()))
 		enemy.id = entry[0]
 		enemy.position = entry[1]
 		enemy.target = player
@@ -263,6 +281,8 @@ func _ready() -> void:
 	_sync_context()
 	Session.changed.connect(_update_knell_environment)
 	_update_knell_environment()
+	Session.changed.connect(_update_delve_environment)
+	_update_delve_environment()
 	Session.changed.connect(_update_preparation_environment)
 	_update_preparation_environment()
 	Session.changed.connect(_update_junction_environment)
@@ -342,6 +362,9 @@ func nearby_key() -> String:
 		return "KNELL_RECORD"
 	for id in knell_plaques:
 		if player.position.distance_to(knell_plaques[id].position) < 45: return "KNELL_PLAQUE_" + id.to_upper()
+	if is_instance_valid(delve_stairs) and player.position.distance_to(delve_stairs.position) < 50:
+		return "DELVE_DESCEND" if delve_stairs.open else "DELVE_STAIRS"
+	if is_instance_valid(delve_note) and player.position.distance_to(delve_note.position) < 45: return "DELVE_NOTE"
 	for kind in trial_markers:
 		if player.position.distance_to(trial_markers[kind].position) < 48:
 			return "TRIAL_SITE_" + kind.to_upper()
@@ -409,6 +432,15 @@ func interact() -> void:
 	if key.begins_with("KNELL_PLAQUE_"):
 		if Session.nature.form != "human": Session.notice.emit("NATURE_RETURN_FORM")
 		else: dialog_requested.emit("knell:plaque_" + key.trim_prefix("KNELL_PLAQUE_").to_lower())
+		return
+	if key == "DELVE_DESCEND":
+		travel_requested.emit(Delve.region(Delve.depth_of(Session.region) + 1), Vector2(250, 680))
+		return
+	if key == "DELVE_STAIRS":
+		Session.notice.emit("DELVE_STAIRS_SEALED")
+		return
+	if key == "DELVE_NOTE":
+		dialog_requested.emit("delve:note")
 		return
 	if key == "TO_UNDERCROFT" and not Knell.can_enter(Session.gathered):
 		Session.notice.emit("KNELL_DOOR_LOCKED")
@@ -524,6 +556,8 @@ func interact() -> void:
 				if chest.visible and player.position.distance_to(chest.position) < 40 and chest.get_meta("definition").id not in Session.opened:
 					if Session.claim_chest(chest.get_meta("definition"), player.position, player_vitals()):
 						chest.modulate = Color("6d7770")
+						var claimed: String = chest.get_meta("definition").id
+						if claimed.begins_with("delve_keystone_"): Session.notice.emit("DELVE_COMPLETE" if claimed == Delve.keystone(Delve.DEPTHS) else "DELVE_STAIRS_OPEN")
 					return
 		"HERB":
 			for herb in herbs:
@@ -1234,3 +1268,9 @@ func _update_knell_environment() -> void:
 				removed = true
 		if removed: navigation.configure(self)
 	landscape.queue_redraw()
+
+func _update_delve_environment() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	if is_instance_valid(delve_stairs):
+		delve_stairs.open = Delve.keystone(Delve.depth_of(Session.region)) in Session.opened
+		delve_stairs.queue_redraw()

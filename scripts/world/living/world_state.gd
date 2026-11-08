@@ -15,6 +15,9 @@ static func number(value: Variant, minimum: float, maximum: float, integer: bool
 static func valid(data: Variant) -> bool:
 	if not data is Dictionary or not number(data.get("minutes"), 0, 1000000000) or not number(data.get("seed"), 0, 2147483647, true):
 		return false
+	# Optional per-playthrough seed of the generated hollows; older saves fall back to "seed".
+	if data.has("delve_seed") and not number(data.delve_seed, 0, 2147483647, true):
+		return false
 	if not Schedule.valid_positions(data.get("npcs")) or not data.get("reputation") is Dictionary:
 		return false
 	if not Factions.valid(data.reputation) or not Commission.valid(data.get("commission")):

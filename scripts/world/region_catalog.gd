@@ -108,7 +108,14 @@ const REGIONS := {
 		"chests": [{"id": "knell_supplies", "point": Vector2(330, 480), "requires_opened": ["accord_community"], "items": {"herb": 2, "potion": 1}},
 			{"id": "knell_cache", "point": Vector2(1700, 1090), "requires": ["undercroft_bell"], "items": {"coin": 14, "potion": 1}}]
 	},
+	"hollow_1": {"indoor": true, "generated": true, "location": "LOCATION_HOLLOW_1", "description": "REGION_HOLLOW", "camp": Vector2(230, 780),
+		"exit": Vector2(175, 680), "destination": "ruins", "arrival": Vector2(1620, 1000), "exit_label": "TO_SURFACE", "herbs": [], "enemies": []},
+	"hollow_2": {"indoor": true, "generated": true, "location": "LOCATION_HOLLOW_2", "description": "REGION_HOLLOW", "camp": Vector2(230, 780),
+		"exit": Vector2(175, 680), "destination": "ruins", "arrival": Vector2(1620, 1000), "exit_label": "TO_SURFACE", "herbs": [], "enemies": []},
+	"hollow_3": {"indoor": true, "generated": true, "location": "LOCATION_HOLLOW_3", "description": "REGION_HOLLOW", "camp": Vector2(230, 780),
+		"exit": Vector2(175, 680), "destination": "ruins", "arrival": Vector2(1620, 1000), "exit_label": "TO_SURFACE", "herbs": [], "enemies": []},
 	"ruins": {
+		"extra_exits": [{"point": Vector2(1700, 1000), "destination": "hollow_1", "arrival": Vector2(250, 680), "label": "TO_HOLLOW", "direction": 1}],
 		"indoor": true, "location": "LOCATION_RUINS", "description": "REGION_RUINS", "camp": Vector2(290, 870),
 		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1840, 650), "exit_label": "TO_LAKE",
 		"herbs": [Vector2(430, 940)],

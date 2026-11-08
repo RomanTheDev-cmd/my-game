@@ -8,6 +8,7 @@ const NatureScreen = preload("res://scripts/ui/nature_screen.gd")
 const Trial = preload("res://scripts/quests/trial_rules.gd")
 const AccordScreen = preload("res://scripts/ui/accord_screen.gd")
 const KnellScreen = preload("res://scripts/ui/knell_screen.gd")
+const DelveScreen = preload("res://scripts/ui/delve_screen.gd")
 const RescueScreen = preload("res://scripts/ui/rescue_screen.gd")
 const PreparationScreen = preload("res://scripts/ui/preparation_screen.gd")
 const JunctionScreen = preload("res://scripts/ui/junction_screen.gd")
@@ -312,6 +313,7 @@ func show_journal() -> void:
 	RescueScreen.journal(self, contents)
 	AccordScreen.journal(self, contents)
 	KnellScreen.journal(self, contents)
+	DelveScreen.journal(self, contents)
 	CityScreen.journal(self, contents)
 	ForestScreen.journal(self, contents)
 	CampaignScreen.journal(self, contents)
@@ -347,6 +349,9 @@ func show_dialog(kind: String = "keeper", bypass_reaction: bool = false) -> void
 		return
 	if kind.begins_with("knell:"):
 		KnellScreen.show_page(self, kind.trim_prefix("knell:"))
+		return
+	if kind.begins_with("delve:"):
+		DelveScreen.show_page(self)
 		return
 	if kind.begins_with("accord:"):
 		AccordScreen.show_page(self, kind.trim_prefix("accord:"))
@@ -672,6 +677,8 @@ func show_map() -> void:
 	map.player_position = world.player.position
 	map.facing = world.player.facing
 	map.obstacles = world.navigation.obstacles
+	for key in ["stairs", "note"]:
+		if world.definition.has(key): map.markers[key] = world.definition[key]
 	for npc in world.npcs.values():
 		if npc.visible:
 			map.npcs[npc.kind] = npc.position
