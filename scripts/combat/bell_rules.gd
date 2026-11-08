@@ -29,7 +29,7 @@ static func spell_multiplier(kind: String) -> float:
 	return 1.6 if kind == "light" else 1.0
 # Rings and the great knell pass only through open air; a pillar is real cover.
 static func covered(navigation: RefCounted, origin: Vector2, target: Vector2) -> bool:
-	return navigation != null and not navigation.segment_clear(origin, target)
+	return navigation != null and not navigation.segment_clear(origin, target.move_toward(origin, 9.0))
 static func blink_points(target: Vector2, distance: float = 80.0) -> Array[Vector2]:
 	var result: Array[Vector2] = []
 	for i in 8:

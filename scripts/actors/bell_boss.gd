@@ -71,7 +71,6 @@ func _release() -> void:
 			echo.position = summon_point
 			echo.target = target
 			echo.navigation = navigation
-			echo.aggro_range = 600
 			echo.awareness_time = 4.0
 			get_parent().add_child(echo)
 			minions.append(echo)

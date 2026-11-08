@@ -543,10 +543,11 @@ func _on_strike(origin: Vector2, direction: Vector2) -> void:
 		if child is Enemy:
 			var offset: Vector2 = child.global_position - origin
 			if offset.length() < player.weapon_stats().reach and offset.normalized().dot(direction) > 0.15 and navigation.segment_clear(origin, child.global_position):
+				var before: float = child.health
 				child.receive_damage(player.weapon_stats().damage + 4 * int(Session.skills.get("sword", 0)), direction)
-				# The bell tongue's heavy note briefly staggers whoever it strikes.
+				# The bell tongue's heavy note briefly staggers whoever it actually strikes.
 				var stagger: float = Gear.weapon(Session.equipped).get("stagger", 0.0) if Session.nature.form == "human" else 0.0
-				if stagger > 0 and is_instance_valid(child) and child.health > 0: child.apply_slow(stagger, 0.6)
+				if stagger > 0 and is_instance_valid(child) and child.health > 0 and child.health < before: child.apply_slow(stagger, 0.6)
 
 func _on_defeated(id: String) -> void:
 	if id not in Session.defeated:

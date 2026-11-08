@@ -5,6 +5,8 @@ const WALLS := [Rect2(-30, -30, 1980, 30), Rect2(-30, 1280, 1980, 30), Rect2(-30
 	Rect2(520, 250, 40, 350), Rect2(520, 700, 40, 460), Rect2(560, 780, 200, 40), Rect2(860, 780, 240, 40),
 	Rect2(1100, 250, 40, 200), Rect2(1100, 550, 40, 410), Rect2(1100, 1040, 40, 120),
 	Rect2(760, 420, 40, 40), Rect2(900, 580, 40, 40)]
+# Solid rock around the frame: only the exit alcove stays open beyond the inner walls.
+const ROCK := [Rect2(0, 0, 90, 1280), Rect2(0, 0, 1920, 170), Rect2(0, 1240, 1920, 40), Rect2(1830, 0, 90, 1280)]
 const PILLARS: Array[Rect2] = [Rect2(1265, 450, 50, 50), Rect2(1595, 450, 50, 50), Rect2(1265, 910, 50, 50), Rect2(1595, 910, 50, 50)]
 const GRATE := Rect2(1100, 450, 40, 100)
 const PASSAGE := Rect2(1100, 960, 40, 80)
@@ -12,7 +14,7 @@ const BELL_POINT := Vector2(1455, 705)
 const RENEWAL_CAMP := Vector2(1030, 320)
 
 func _ready() -> void:
-	for rect in WALLS + PILLARS: _obstacle(rect)
+	for rect in WALLS + PILLARS + ROCK: _obstacle(rect)
 	if grate_closed():
 		_obstacle(GRATE)
 		get_parent().get_child(get_parent().get_child_count() - 1).set_meta("knell_grate", true)

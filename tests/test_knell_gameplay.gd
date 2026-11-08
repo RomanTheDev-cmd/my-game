@@ -131,6 +131,16 @@ func run() -> void:
 	check(supplies != null and not supplies.visible, "community supplies stay hidden in a renewal world")
 	var echoes: Array = world.get_children().filter(func(child): return child.get_script() == Echo)
 	check(echoes.size() == 3, "three echoes haunt the crypt")
+	for outside in [Vector2(45, 650), Vector2(45, 120), Vector2(960, 100), Vector2(1880, 700), Vector2(960, 1260)]:
+		check(world.navigation.find_path(Vector2(240, 650), outside).is_empty(), "no route leads outside the crypt walls: %s" % outside)
+	world.player.position = Vector2(170, 650)
+	world.player.set_physics_process(true)
+	Input.action_press("move_left")
+	for i in 90: await physics_frame
+	Input.action_release("move_left")
+	world.player.set_physics_process(false)
+	check(world.player.position.x > 90 and world.player.position.distance_to(world.definition.exit) < 55, "keyboard movement stops in the exit alcove beside the door")
+	world.player.position = Vector2(240, 650)
 	for point in world.definition.knell_sites.values() + world.definition.herbs + [world.definition.camp, Undercroft.RENEWAL_CAMP, world.definition.exit, Vector2(1060, 500)]:
 		check(route_clear(game, Vector2(240, 650), point), "ordinary body has a clear route to %s" % point)
 	# The entrance plaque is safe to read at once.
@@ -248,6 +258,16 @@ func run() -> void:
 	game.world._on_strike(game.world.player.position, Vector2.RIGHT)
 	check(target.health < target.max_health and target.slow_remaining > 0, "tongue strike staggers its target")
 	target.queue_free()
+	var faded = Echo.new()
+	faded.position = game.world.player.position + Vector2(30, 0)
+	faded.target = game.world.player
+	game.world.add_child(faded)
+	faded.set_physics_process(false)
+	faded.state = "fade"
+	game.world.player.attack_cooldown = 0
+	game.world._on_strike(game.world.player.position, Vector2.RIGHT)
+	check(faded.health == faded.max_health and faded.slow_remaining == 0, "an untouchable fading echo is neither hurt nor staggered")
+	faded.queue_free()
 	check(session.save_at(game.world.player.position, game.world.player_vitals()) and session.load_saved() and Rules.outcome(session.opened) == "kept" and session.equipped.weapon == Rules.TONGUE, "JSON save keeps outcome and equipped weapon")
 	game._build_world()
 	freeze(game)

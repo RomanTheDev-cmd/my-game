@@ -74,6 +74,8 @@ func run() -> void:
 	var before: float = echo.health
 	echo.receive_damage(20, Vector2.RIGHT)
 	check(is_equal_approx(before - echo.health, 28.0), "exposed echo takes heavier damage")
+	tick(echo, 1.0)
+	check(absf(echo.modulate.r - 1.0) < 0.05 and absf(echo.modulate.g - 1.0) < 0.05, "hit tint fades instead of staying for good: %s" % echo.modulate)
 	echo.queue_free()
 	await process_frame
 	# Ringing changes the body and has natural counters.
@@ -125,6 +127,18 @@ func run() -> void:
 	echo.attack_origin = echo.position
 	tick(echo, 0.6)
 	check(player.health == 100, "stone between echo and hero blocks the ring")
+	# A thin body pressed against the near face of that wall is not hidden behind it.
+	reset_player(Vector2(496, 300))
+	session.region = "undercroft"
+	session.nature = {"kind": "vampire", "form": "mist", "blood": 80.0, "resolve": 100.0, "stage": 3, "history": ["vampire"], "cure": 0, "gift": "blood_mist", "landing": {"region": "undercroft", "position": [496.0, 300.0]}}
+	echo.position = Vector2(580, 300)
+	echo.state = "windup"
+	echo.timer = 0.05
+	echo.attack_origin = echo.position
+	tick(echo, 0.6)
+	check(is_equal_approx(player.health, 96.0), "wall-hugging mist still meets a ring from its own side: %s" % player.health)
+	session.nature = session.Nature.defaults()
+	session.region = "crossing"
 	reset_player(Vector2(300, 600))
 	echo.position = Vector2(240, 600)
 	echo.home = echo.position
@@ -200,6 +214,7 @@ func run() -> void:
 	check(bell.attack_spec.kind == "summon" and bell.state == "windup", "third step calls an echo")
 	tick(bell, 1.2)
 	check(bell.minions.size() == 1 and bell.minions[0].transient and bell.minions[0].reward_xp == 0 and bell.minions[0].id == "", "summoned echo is transient and gives no reward")
+	check(bell.minions[0].aggro_range == 600.0, "summoned echo keeps chamber-wide awareness after entering the scene")
 	for minion in bell.minions: minion.set_physics_process(false)
 	tick(bell, 0.9)
 	check(bell.attack_spec.kind == "knell" and bell.state == "windup" and bell.attack_spec.windup >= 2.0, "great knell is long telegraphed")

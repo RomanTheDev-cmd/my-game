@@ -14,7 +14,8 @@ var bounds := Rect2(40, 40, 1840, 1200)
 func _ready() -> void:
 	max_health = 64
 	attack_damage = 16
-	aggro_range = 240
+	# Echoes called by the bell hunt across the whole chamber.
+	aggro_range = 600.0 if transient else 240.0
 	move_speed = 40
 	reward_xp = 0 if transient else 30
 	coin_reward = 0 if transient else 2
@@ -70,6 +71,7 @@ func _physics_process(delta: float) -> void:
 			else:
 				velocity = _steer(home, 35) if global_position.distance_to(home) > 8 else Vector2.ZERO
 	move_and_slide()
+	modulate = modulate.lerp(Color("92c5df") if slow_remaining > 0 else Color.WHITE, delta * 8)
 
 func _begin_windup() -> void:
 	state = "windup"
