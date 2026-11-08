@@ -990,6 +990,53 @@ func capture() -> void:
 	game.world.rescue_action("rest")
 	game.resume()
 	await shot("rescue_home", game.get_viewport().get_camera_2d())
+	var accord_fixture = load("res://tests/support/accord_fixture.gd")
+	if not accord_fixture.ready(session):
+		printerr("CAPTURE_ACCORD_FIXTURE_FAILED")
+		await TestExit.finish(self, 1)
+		return
+	session.region = "crossing"
+	session.arrival = Vector2(600, 600)
+	game._build_world()
+	game.world.set_process(false)
+	game.world.player.set_physics_process(false)
+	game.resume()
+	game.world.interact()
+	await shot("accord_identity")
+	game.screen.find_child("accord_affirm", true, false).pressed.emit()
+	await shot("accord_identity_review")
+	game.screen.find_child("accord_confirm_affirm", true, false).pressed.emit()
+	for accord_choice in ["renewal", "release", "community"]:
+		if not accord_fixture.accepted(session):
+			printerr("CAPTURE_ACCORD_ACCEPTED_FAILED")
+			await TestExit.finish(self, 1)
+			return
+		session.region = "rotunda"
+		session.arrival = Vector2(620, 650)
+		game._build_world()
+		game.world.set_process(false)
+		game.world.player.set_physics_process(false)
+		game.resume()
+		game.world.interact()
+		await shot("accord_options_" + accord_choice)
+		game.screen.find_child("accord_" + accord_choice, true, false).pressed.emit()
+		await shot("accord_review_" + accord_choice)
+		game.screen.find_child("accord_confirm_" + accord_choice, true, false).pressed.emit()
+		await shot("accord_epilogue_" + accord_choice)
+		game.resume()
+		session.region = "velshof" if accord_choice == "release" else "woodroad"
+		session.arrival = Vector2(780, 995) if accord_choice == "release" else Vector2(1190, 620)
+		if accord_choice == "renewal": session.world_state.minutes = 1400
+		game._build_world()
+		game.world.set_process(false)
+		game.world.player.set_physics_process(false)
+		game.resume()
+		await shot("accord_world_" + accord_choice, game.get_viewport().get_camera_2d())
+		game.show_map()
+		await shot("accord_map_" + accord_choice)
+		game.resume()
+	game.show_journal()
+	await shot("accord_journal")
 	print("CAPTURE_OK")
 	await TestExit.finish(self)
 func shot(file: String, camera: Camera2D = null) -> void:

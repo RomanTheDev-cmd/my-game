@@ -1,4 +1,5 @@
 extends "res://scripts/world/landscape.gd"
+const Accord = preload("res://scripts/world/accord_changes.gd")
 const WALLS := [Rect2(-30, -30, 1980, 30), Rect2(-30, 1280, 1980, 30), Rect2(-30, 0, 30, 1280), Rect2(1920, 0, 30, 1280), Rect2(1500, 0, 45, 560), Rect2(1500, 730, 45, 550), Rect2(310, 400, 190, 75), Rect2(1110, 350, 140, 85)]
 const ROAD := [Rect2(100, 570, 730, 95), Rect2(785, 570, 90, 260), Rect2(785, 745, 400, 90), Rect2(1135, 570, 90, 260), Rect2(1135, 570, 650, 95)]
 func _ready() -> void:
@@ -17,6 +18,7 @@ func _ready() -> void:
 	rng.seed = 171107
 	for i in 160:
 		var point := Vector2(rng.randi_range(70, 1850), rng.randi_range(100, 1190))
+		if Accord.PASSAGES.woodroad.grow(65).has_point(point): continue
 		if _reserved(point) or ROAD.any(func(rect): return rect.grow(75).has_point(point)): continue
 		if point.distance_to(Vector2(390, 800)) < 120: continue
 		if point.distance_to(Vector2(1640, 650)) < 100: continue
@@ -41,9 +43,12 @@ func _draw() -> void:
 	for i in 3000: draw_rect(Rect2(Vector2(rng.randi_range(10, 1910), rng.randi_range(10, 1270)), Vector2(3, 3)), Color("496146") if i % 2 else Color("293c34"))
 	for rect in ROAD: draw_rect(rect, Color("80775d"))
 	for rect in WALLS.slice(4):
-		draw_rect(rect, Color("5b6c59"))
-		draw_line(rect.position, Vector2(rect.end.x, rect.position.y), Color("a3a38a"), 3)
+		for piece in Accord.parts(region, rect):
+			draw_rect(piece, Color("5b6c59"))
+			draw_line(piece.position, Vector2(piece.end.x, piece.position.y), Color("a3a38a"), 3)
 	if "forest_passage" not in Session.opened:
 		draw_rect(Rect2(1500, 560, 45, 170), Color("7c7053"))
 		for y in range(570, 730, 22): draw_line(Vector2(1495, y), Vector2(1550, y + 8), Color("b1a17c"), 4)
 	_camp(Vector2(390, 800))
+
+	if "accord_renewal" in Session.opened: _camp(Accord.Rules.CAMPS[region])

@@ -1,5 +1,5 @@
 {
-  "status": "human/vampire/werewolf rescue and initial aftermath playable; resolution pending",
+  "status": "human/vampire/werewolf rescue and initial aftermath playable; initial resolution implemented separately; full campaign depth pending",
   "rules": "scripts/quests/rescue_rules.gd",
   "source_sequences": ["human_rescue", "vampire_rescue", "werewolf_rescue", "aftermath"],
   "principles": [

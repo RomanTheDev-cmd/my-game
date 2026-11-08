@@ -1,4 +1,6 @@
 extends Node2D
+const Accord = preload("res://scripts/quests/accord_rules.gd")
+const AccordChanges = preload("res://scripts/world/accord_changes.gd")
 const Rescue = preload("res://scripts/quests/rescue_rules.gd")
 const Underhall = preload("res://scripts/world/underhall_landscape.gd")
 const RescueEngine = preload("res://scripts/world/rescue_engine.gd")
@@ -241,6 +243,8 @@ func _ready() -> void:
 	_update_junction_environment()
 	Session.changed.connect(_update_rescue_environment)
 	_update_rescue_environment()
+	Session.changed.connect(_update_accord_environment)
+	_update_accord_environment()
 	Session.changed.connect(_update_city_environment)
 	_update_city_environment()
 	Session.changed.connect(_update_forest_environment)
@@ -368,6 +372,10 @@ func interact() -> void:
 	_update_tracking()
 	_sync_context()
 	var key := nearby_key()
+	if Accord.ready(Session.gathered, Session.opened) and (key == "MENTOR_NAME" or (Session.region == "rotunda" and key in ["STEWARD_NAME", "WITNESS_NAME", "CRAFTER_NAME", "JOINT_SITE_TABLE"])):
+		var target := "table" if key == "JOINT_SITE_TABLE" else key.trim_suffix("_NAME").to_lower()
+		dialog_requested.emit("accord:" + target)
+		return
 	if key == "RESCUE_RETRY_SITE":
 		rescue_engine.retry()
 		return
@@ -1125,3 +1133,22 @@ func _update_rescue_environment() -> void:
 		if removed: navigation.configure(self)
 	landscape.queue_redraw()
 	_update_npcs()
+
+func can_accord(event: String) -> bool:
+	if not Accord.SITES.has(event) or player.health <= 0 or player.attack_time > 0 or player.dodge_time > 0 or not safe_to_rest(): return false
+	var site: Array = Accord.SITES[event]
+	if Session.region != site[0]: return false
+	var point: Vector2 = npcs[site[1]].position if npcs.has(site[1]) and npcs[site[1]].visible else definition.get("junction_sites", {}).get(site[1], Vector2.INF)
+	return player.position.distance_to(point) < 48 and navigation.segment_clear(player.position, point) and not Accord.resolve(Session.nature, Session.gathered, Session.opened, Session.inventory, player_vitals(), event).is_empty()
+func accord_action(event: String) -> bool:
+	if not can_accord(event): return false
+	_sync_context()
+	if not Session.accord_event(event, player.position, player_vitals()): return false
+	Sound.play_at("collect", player.position)
+	return true
+func _update_accord_environment() -> void:
+	if not is_inside_tree() or landscape.region != Session.region: return
+	AccordChanges.apply(self)
+	for chest in chests:
+		if Accord.CACHES.values().any(func(entry): return entry.id == chest.get_meta("definition").id): chest.visible = "accord_community" in Session.opened
+	landscape.queue_redraw()

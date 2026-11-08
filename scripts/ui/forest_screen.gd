@@ -1,4 +1,5 @@
 extends RefCounted
+const Accord = preload("res://scripts/quests/accord_rules.gd")
 const Rules = preload("res://scripts/quests/forest_rules.gd")
 const Text = preload("res://scripts/ui/campaign_screen.gd")
 static func show_page(ui: Node, target: String = "roadkeeper", confirm: String = "") -> void:
@@ -12,6 +13,7 @@ static func show_page(ui: Node, target: String = "roadkeeper", confirm: String =
 	contents.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	contents.add_theme_constant_override("separation", 10)
 	scroll.add_child(contents)
+	if Accord.outcome(Session.opened) != "": Text.text(ui, contents, "ACCORD_REGION_FOREST_" + Accord.outcome(Session.opened).to_upper(), 16)
 	if confirm != "":
 		Text.text(ui, contents, "FOREST_CONFIRM_" + confirm.to_upper(), 18)
 		var button: Button = ui._button("NATURE_CONFIRM", _act.bind(ui, confirm, target), contents)

@@ -1,4 +1,5 @@
 extends RefCounted
+const Accord = preload("res://scripts/quests/accord_rules.gd")
 const Rules = preload("res://scripts/quests/city_rules.gd")
 const Text = preload("res://scripts/ui/campaign_screen.gd")
 static func show_page(ui: Node, target: String = "crafter", confirm: String = "") -> void:
@@ -12,6 +13,7 @@ static func show_page(ui: Node, target: String = "crafter", confirm: String = ""
 	contents.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	contents.add_theme_constant_override("separation", 10)
 	scroll.add_child(contents)
+	if Accord.outcome(Session.opened) != "": Text.text(ui, contents, "ACCORD_REGION_CITY_" + Accord.outcome(Session.opened).to_upper(), 16)
 	if confirm != "":
 		var key := "CITY_CONFIRM_" + (Rules.draft(Session.gathered).to_upper() if confirm == "seal" else confirm.to_upper())
 		Text.text(ui, contents, key, 18)

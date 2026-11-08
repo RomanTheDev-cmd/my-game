@@ -51,26 +51,29 @@ const REGIONS := {
 	"terrace": {
 		"location": "LOCATION_TERRACE", "description": "REGION_TERRACE", "camp": Vector2(350, 780), "witness": Vector2(440, 600),
 		"exit": Vector2(135, 650), "destination": "lake", "arrival": Vector2(1680, 340), "exit_label": "TO_LAKE",
+		"extra_camps": [{"point": Vector2(1380, 790), "requires_opened": "accord_renewal"}],
 		"herbs": [Vector2(670, 760), Vector2(1450, 880)],
 		"enemies": [["terrace_watcher", Vector2(1640, 320)], ["terrace_archer", Vector2(1640, 1050), "ranged"]],
 		"story_sites": {"marks": Vector2(1040, 450), "control": Vector2(1380, 650), "shore": Vector2(1160, 820)},
-		"chests": [{"id": "terrace_cache", "point": Vector2(1740, 1080), "requires": ["terrace_archer"], "items": {"coin": 9, "potion": 1}}]
+		"chests": [{"id": "terrace_cache", "point": Vector2(1740, 1080), "requires": ["terrace_archer"], "items": {"coin": 9, "potion": 1}}, {"id": "commons_terrace_supplies", "point": Vector2(1380, 790), "requires_opened": ["accord_community"], "items": {"herb": 2, "potion": 1}}]
 	},
 	"woodroad": {
 		"location": "LOCATION_WOODROAD", "description": "REGION_WOODROAD", "camp": Vector2(390, 800), "roadkeeper": Vector2(430, 620),
 		"exit": Vector2(135, 620), "destination": "thicket", "arrival": Vector2(1680, 620), "exit_label": "TO_THICKET",
+		"extra_camps": [{"point": Vector2(1190, 620), "requires_opened": "accord_renewal"}],
 		"herbs": [Vector2(590, 870), Vector2(1740, 1020)],
 		"enemies": [["woodroad_guard", Vector2(1750, 1060), "heavy"]],
 		"forest_sites": [Vector2(700, 620), Vector2(1020, 780), Vector2(1380, 620)],
-		"chests": [{"id": "woodroad_cache", "point": Vector2(1640, 650), "requires_opened": ["forest_passage"], "items": {"herb": 2, "potion": 1}}]
+		"chests": [{"id": "woodroad_cache", "point": Vector2(1640, 650), "requires_opened": ["forest_passage"], "items": {"herb": 2, "potion": 1}}, {"id": "commons_woodroad_supplies", "point": Vector2(1190, 620), "requires_opened": ["accord_community"], "items": {"herb": 2, "potion": 1}}]
 	},
 	"velshof": {
 		"location": "LOCATION_CITY", "description": "REGION_CITY", "camp": Vector2(350, 840), "crafter": Vector2(500, 620), "archivist": Vector2(1170, 520),
 		"exit": Vector2(135, 650), "destination": "workshop", "arrival": Vector2(810, 220), "exit_label": "TO_WORKSHOP",
+		"extra_camps": [{"point": Vector2(1100, 880), "requires_opened": "accord_renewal"}],
 		"herbs": [Vector2(700, 870), Vector2(1450, 800)],
 		"enemies": [["velshof_backstreet", Vector2(1750, 1020)], ["velshof_archer", Vector2(1720, 170), "ranged"]],
 		"city_sites": {"board": Vector2(850, 700), "press": Vector2(600, 780), "archive": Vector2(1210, 700)},
-		"chests": [{"id": "courtyard_supplies", "point": Vector2(980, 780), "requires_opened": ["city_report"], "items": {"herb": 2, "potion": 1}}]
+		"chests": [{"id": "courtyard_supplies", "point": Vector2(980, 780), "requires_opened": ["city_report"], "items": {"herb": 2, "potion": 1}}, {"id": "commons_velshof_supplies", "point": Vector2(1100, 880), "requires_opened": ["accord_community"], "items": {"herb": 2, "potion": 1}}]
 	},
 	"rotunda": {
 		"extra_exits": [{"point": Vector2(1700, 650), "destination": "underhall", "arrival": Vector2(240, 650), "label": "TO_UNDERHALL", "direction": 1}],

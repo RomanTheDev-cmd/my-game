@@ -1,0 +1,21 @@
+{
+  "status": "initial identity/resolution and three real regional consequences playable; full campaign depth and target duration pending",
+  "rules": "scripts/quests/accord_rules.gd",
+  "source_sequences": ["identity_choice", "changed_human", "resolution", "renewal", "release", "community"],
+  "principles": [
+    "actual previous report and aftermath, then own present-path statement",
+    "six distinct ordinary/oath/nature/return contexts with retained personal memory",
+    "no free cure, forced transformation or nature-exclusive final outcome",
+    "historical identity remains valid after change; reaffirm before decision",
+    "both real participants heard at their actual positions",
+    "three reviewed one-time choices at actual shared table",
+    "equal one-time experience and relations without hidden resource cost",
+    "renewal creates actual extra regional rest/light/checkpoints",
+    "release opens physical partial-wall passages with Nav/map/art agreement",
+    "community supplies are genuine one-time backend-gated loot",
+    "old regional decisions and living participants retained",
+    "save failure never commits choice, geometry, supplies or reward",
+    "epilogue permits continued exploration and optional human return"
+  ],
+  "continuation": "Expand meaningful optional exploration/combat content reacting to the selected world consequence and prior nature/history. This outline is advisory; do not present this initial complete arc as a finished 12–18 hour campaign."
+}

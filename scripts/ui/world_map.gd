@@ -1,4 +1,5 @@
 extends Control
+const Accord = preload("res://scripts/world/accord_changes.gd")
 const Regions = preload("res://scripts/world/region_catalog.gd")
 var region := "crossing"
 var player_position := Vector2.ZERO
@@ -42,10 +43,12 @@ func _draw() -> void:
 		draw_line(project(Vector2(120, 650)), project(Vector2(1760, 650)), Color("aa9f7e"), 7)
 	if region == "velshof":
 		for rect in preload("res://scripts/world/city_landscape.gd").ROADS: _box(rect, Color("aaa58a"))
-		for rect in preload("res://scripts/world/city_landscape.gd").WALLS.slice(4): _box(rect, Color("8c947d"))
+		for rect in preload("res://scripts/world/city_landscape.gd").WALLS.slice(4):
+			for piece in Accord.parts(region, rect): _box(piece, Color("8c947d"))
 	if region == "woodroad":
 		for rect in preload("res://scripts/world/woodroad_landscape.gd").ROAD: _box(rect, Color("aa9f7e"))
-		for rect in preload("res://scripts/world/woodroad_landscape.gd").WALLS.slice(4): _box(rect, Color("8c947d"))
+		for rect in preload("res://scripts/world/woodroad_landscape.gd").WALLS.slice(4):
+			for piece in Accord.parts(region, rect): _box(piece, Color("8c947d"))
 		if "forest_passage" not in Session.opened: _box(Rect2(1500, 560, 45, 170), Color("bdab7b"))
 	if region == "haven":
 		_box(Rect2(900, 0, 80, 470), Color("507c88"))

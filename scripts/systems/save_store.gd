@@ -1,4 +1,5 @@
 extends RefCounted
+const Accord = preload("res://scripts/quests/accord_rules.gd")
 const Rescue = preload("res://scripts/quests/rescue_rules.gd")
 const Preparation = preload("res://scripts/quests/preparation_rules.gd")
 const Junction = preload("res://scripts/quests/junction_rules.gd")
@@ -141,6 +142,8 @@ static func validate(data: Variant) -> bool:
 	if not data.nature.landing.is_empty() and data.nature.landing.region != data.region: return false
 	if not Nature.quest_valid(data.nature, data.gathered, data.opened): return false
 	if not Community.valid(data.nature, data.gathered, data.opened): return false
+	if not Accord.valid(data.nature, data.gathered, data.opened): return false
+	if data.defeated.any(func(flag): return flag.begins_with("accord:") or flag.begins_with("accord_") or Accord.CACHES.values().any(func(entry): return entry.id == flag)): return false
 	if not Rescue.valid(data.nature, data.gathered, data.opened): return false
 	if data.defeated.any(func(flag): return flag.begins_with("rescue:") or flag.begins_with("rescue_")): return false
 	if not Preparation.valid(data.gathered, data.opened): return false
