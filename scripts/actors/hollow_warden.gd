@@ -10,9 +10,7 @@ func _ready() -> void:
 	aggro_range = 280
 	reward_xp = 90
 	coin_reward = 12
+	windup_slow = 0.9
+	windup_fast = 0.7
 	sprite.modulate = Color("9e8fb0")
 	sprite.scale = Vector2(1.45, 1.45)
-
-func _physics_process(delta: float) -> void:
-	super._physics_process(delta)
-	windup_duration = 0.7 if health < max_health / 2 else 0.9

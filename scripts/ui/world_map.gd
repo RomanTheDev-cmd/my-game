@@ -69,7 +69,8 @@ func _draw() -> void:
 		for point in preparation.CONTROLS.values():
 			var mark := project(point)
 			draw_rect(Rect2(mark - Vector2(3, 3), Vector2(6, 6)), Color("cfbf8a"), false, 1)
-	if markers.has("stairs"): draw_rect(Rect2(project(markers.stairs) - Vector2(4, 4), Vector2(8, 8)), Color("cdbb8a"), false, 2)
+	for rect in markers.get("rubble", []): _box(rect, Color("6f6152"))
+	if markers.has("stairs"): draw_rect(Rect2(project(markers.stairs) - Vector2(4, 4), Vector2(8, 8)), Color("cdbb8a") if markers.get("stairs_open", false) else Color("7d7a6c"), false, 2)
 	if markers.has("note"): draw_rect(Rect2(project(markers.note) - Vector2(2, 3), Vector2(4, 6)), Color("e9e1ce"))
 	if region == "undercroft":
 		var knell = preload("res://scripts/quests/knell_rules.gd")

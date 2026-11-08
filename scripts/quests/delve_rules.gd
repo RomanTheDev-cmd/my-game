@@ -12,6 +12,11 @@ static func depth_of(region_id: String) -> int:
 static func seed_of(world_state: Dictionary) -> int:
 	return int(world_state.get("delve_seed", world_state.get("seed", 0)))
 static func keystone(depth: int) -> String: return "delve_keystone_%d" % depth
+static func chest_depth(id: String) -> int:
+	var parts := id.split("_")
+	return int(parts[2]) if id.begins_with("delve_") and parts.size() >= 3 and parts[2].is_valid_int() else 0
+static func progress(region_id: String, gathered: Array, defeated: Array, opened: Array, owned: Array) -> bool:
+	return region_id.begins_with("hollow") or gathered.any(func(flag): return flag.begins_with("hollow") or flag.begins_with("delve")) or defeated.any(func(flag): return flag.begins_with("hollow") or flag.begins_with("delve")) or opened.any(func(flag): return flag.begins_with("hollow") or flag.begins_with("delve")) or GEAR in owned
 static func can_enter(depth: int, opened: Array) -> bool:
 	return depth == 1 or (depth > 1 and depth <= DEPTHS and keystone(depth - 1) in opened)
 static func cleared(opened: Array) -> int:
@@ -24,8 +29,7 @@ static func layouts(world_state: Dictionary) -> Dictionary:
 	for depth in range(1, DEPTHS + 1): result[depth] = Generator.generate(seed_of(world_state), depth)
 	return result
 static func valid(world_state: Dictionary, region_id: String, gathered: Array, defeated: Array, opened: Array, owned: Array) -> bool:
-	var touched := region_id.begins_with("hollow") or gathered.any(func(flag): return flag.begins_with("hollow") or flag.begins_with("delve")) or defeated.any(func(flag): return flag.begins_with("hollow") or flag.begins_with("delve")) or opened.any(func(flag): return flag.begins_with("hollow") or flag.begins_with("delve")) or GEAR in owned
-	if not touched: return true
+	if not progress(region_id, gathered, defeated, opened, owned): return true
 	var maps := layouts(world_state)
 	var enemies := {}
 	var herbs := {}
@@ -33,7 +37,9 @@ static func valid(world_state: Dictionary, region_id: String, gathered: Array, d
 	for depth in maps:
 		for entry in maps[depth].enemies: enemies[entry[0]] = depth
 		for point in maps[depth].herbs: herbs[region(depth) + ":herb_%d_%d" % [point.x, point.y]] = depth
-		for entry in maps[depth].chests: chests[entry.id] = depth
+		for entry in maps[depth].chests:
+			chests[entry.id] = depth
+			if entry.id in opened and not entry.get("requires", []).all(func(guard): return guard in defeated): return false
 	if region_id.begins_with("hollow") and (depth_of(region_id) == 0 or not can_enter(depth_of(region_id), opened)): return false
 	for flag in gathered:
 		if flag.begins_with("delve"): return false

@@ -79,9 +79,12 @@ func run() -> void:
 	data.gathered.append("hollow_1:herb_%d_%d" % [first.herbs[0].x, first.herbs[0].y])
 	data.opened.append(first.chests.filter(func(chest): return chest.get("hidden", false))[0].id)
 	check(session.Store.validate(data), "real generated enemy, herb and cache IDs of the first depth are valid")
-	for corruption in ["region_sealed", "foreign_enemy", "foreign_herb", "unknown_cache", "deeper_cache", "deeper_enemy", "keystone_order", "gear_without_keystone", "duplicate_enemy", "wrong_collection", "reserved_flag", "other_seed"]:
+	var guards_of := func(depth: int) -> Array: return layouts[depth].chests.filter(func(chest): return chest.id == Rules.keystone(depth))[0].requires
+	check(Rules.chest_depth("delve_keystone_3") == 3 and Rules.chest_depth("delve_cache_2_1") == 2 and Rules.chest_depth("delve_x") == 0, "chest IDs carry their own depth")
+	for corruption in ["keystone_without_guards", "region_sealed", "foreign_enemy", "foreign_herb", "unknown_cache", "deeper_cache", "deeper_enemy", "keystone_order", "gear_without_keystone", "duplicate_enemy", "wrong_collection", "reserved_flag", "other_seed"]:
 		var bad := data.duplicate(true)
 		match corruption:
+			"keystone_without_guards": bad.opened.append("delve_keystone_1")
 			"region_sealed": bad.region = "hollow_2"
 			"foreign_enemy": bad.defeated.append("hollow_1_e99")
 			"foreign_herb": bad.gathered.append("hollow_1:herb_1_1")
@@ -96,12 +99,24 @@ func run() -> void:
 			"other_seed": bad.world_state["delve_seed"] = int(bad.world_state.seed) + 1
 		check(not session.Store.validate(bad), "save rejects inconsistent hollow progress: " + corruption)
 	data.opened.append("delve_keystone_1")
+	data.defeated.append_array(guards_of.call(1).filter(func(id): return id not in data.defeated))
 	data.region = "hollow_2"
 	data.defeated.append(second.enemies[0][0])
 	check(session.Store.validate(data), "first keystone opens the second depth for region, enemies and caches")
 	data.opened.append_array(["delve_keystone_2", "delve_keystone_3"])
+	for depth in [2, 3]: data.defeated.append_array(guards_of.call(depth).filter(func(id): return id not in data.defeated))
 	data.gear_owned.append("deep_mail")
 	check(session.Store.validate(data) and Rules.cleared(data.opened) == 3, "complete descent permits the unique armour")
+	# Saves from before the hollows receive their own seed on load until hollow progress exists.
+	session.fresh()
+	var legacy: Dictionary = session.snapshot(Vector2(410, 490))
+	legacy.world_state.erase("delve_seed")
+	check(session.Store.write_game(legacy) == OK and session.load_saved() and session.world_state.has("delve_seed") and session.checkpoint.world_state.has("delve_seed") and session.Store.validate(session.snapshot(Vector2(410, 490))), "an old save without hollow progress gets its own playthrough seed on load")
+	var started := legacy.duplicate(true)
+	started.region = "hollow_1"
+	started.position = [250.0, 680.0]
+	check(session.Store.write_game(started) == OK and session.load_saved() and not session.world_state.has("delve_seed") and session.Store.validate(session.snapshot(Vector2(250, 680))), "existing hollow progress keeps the fallback seed so its layout never changes")
+	session.fresh()
 	check(not session.travel("hollow_2", Vector2(1650, 1000), {"health": 80.0, "stamina": 100.0, "mana": 90.0}) and session.region == "crossing", "backend refuses a sealed depth even when called directly")
 	print("Delve rule checks: %d; failures: %d" % [checks, failures])
 	await TestExit.finish(self, 1 if failures else 0)

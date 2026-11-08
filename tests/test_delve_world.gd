@@ -64,7 +64,21 @@ func run() -> void:
 			check(layout.depth == depth and world.landscape.get_script().resource_path.ends_with("hollow_landscape.gd"), "%s/%d: generated layout drives the real scene" % [region, seed_value])
 			var spawned := world.get_children().filter(func(child): return child is CharacterBody2D and child != world.player and child.get("id") != null and child.id.begins_with("hollow_"))
 			check(spawned.size() == layout.enemies.size(), "%s/%d: every generated enemy is spawned" % [region, seed_value])
-			if depth == 3: check(spawned.any(func(enemy): return enemy.get_script() == warden_script and enemy.max_health == 300), "%s/%d: elite warden guards the deepest keystone" % [region, seed_value])
+			if depth == 3:
+				var wardens := spawned.filter(func(enemy): return enemy.get_script() == warden_script)
+				check(wardens.size() == 1 and wardens[0].max_health == 300, "%s/%d: elite warden guards the deepest keystone" % [region, seed_value])
+				var warden = wardens[0]
+				warden.target = world.player
+				world.player.position = warden.position + Vector2(-30, 0)
+				warden.awareness_time = 4
+				warden._physics_process(1.0 / 60)
+				var full: float = warden.timer if warden.state == "windup" else -1.0
+				warden.state = "idle"
+				warden.timer = 0
+				warden.health = 100
+				warden._physics_process(1.0 / 60)
+				var hurt: float = warden.timer if warden.state == "windup" else -1.0
+				check(is_equal_approx(full, 0.9) and is_equal_approx(hurt, 0.7), "%s/%d: the elite warden's real windup timer is faster than an ordinary heavy foe: %s/%s" % [region, seed_value, full, hurt])
 			var targets: Array = [Vector2(230, 780), Vector2(175, 680), layout.note] + layout.herbs + layout.chests.map(func(chest): return chest.point) + layout.enemies.map(func(entry): return entry[1])
 			if layout.has("stairs"): targets.append(layout.stairs)
 			var reachable := targets.all(func(point): return route_clear(world, Vector2(250, 680), point))

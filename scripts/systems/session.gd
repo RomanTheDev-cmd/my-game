@@ -93,6 +93,10 @@ func snapshot(position: Vector2, current_vitals: Dictionary = {}) -> Dictionary:
 		"quest": quest, "aid_quest": aid_quest, "defeated": defeated.duplicate(), "inventory": inventory.duplicate(), "gathered": gathered.duplicate()}
 
 func apply(data: Dictionary) -> void:
+	# Saves from before the hollows get their own seed until any hollow progress exists.
+	if not data.world_state.has("delve_seed") and not Delve.progress(data.region, data.gathered, data.defeated, data.opened, data.gear_owned):
+		data = data.duplicate(true)
+		data.world_state["delve_seed"] = randi_range(1, 2147483646)
 	nature = data.nature.duplicate(true)
 	world_state = data.world_state.duplicate(true)
 	gear_owned = data.gear_owned.duplicate()
@@ -289,6 +293,7 @@ func trade_item(id: String, selling: bool, position: Vector2, current_vitals: Di
 
 func claim_chest(chest: Dictionary, position: Vector2, current_vitals: Dictionary) -> bool:
 	if chest.has("required_form") and nature.form != chest.required_form: return false
+	if chest.get("id", "").begins_with("delve_") and Delve.chest_depth(chest.id) != Delve.depth_of(region): return false
 	var result := Loot.claim(chest, inventory, gear_owned, opened, defeated)
 	if result.is_empty():
 		notice.emit("CHEST_UNAVAILABLE")

@@ -1,4 +1,6 @@
 extends "res://scripts/actors/enemy.gd"
+var windup_slow := 1.0
+var windup_fast := 0.8
 
 func _ready() -> void:
 	max_health = 180
@@ -16,5 +18,5 @@ func _ready() -> void:
 	sprite.modulate = Color("b8a8a2")
 
 func _physics_process(delta: float) -> void:
-	windup_duration = 0.8 if health < max_health / 2 else 1.0
+	windup_duration = windup_fast if health < max_health / 2 else windup_slow
 	super._physics_process(delta)

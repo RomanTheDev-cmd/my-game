@@ -677,8 +677,9 @@ func show_map() -> void:
 	map.player_position = world.player.position
 	map.facing = world.player.facing
 	map.obstacles = world.navigation.obstacles
-	for key in ["stairs", "note"]:
+	for key in ["stairs", "note", "rubble"]:
 		if world.definition.has(key): map.markers[key] = world.definition[key]
+	if is_instance_valid(world.delve_stairs): map.markers["stairs_open"] = world.delve_stairs.open
 	for npc in world.npcs.values():
 		if npc.visible:
 			map.npcs[npc.kind] = npc.position

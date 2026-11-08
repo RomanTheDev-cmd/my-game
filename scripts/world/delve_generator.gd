@@ -143,9 +143,11 @@ static func generate(seed_value: int, depth: int) -> Dictionary:
 			enemies.append(["hollow_%d_e%d" % [depth, enemies.size()], take.call(), pool[rng.randi_range(0, pool.size() - 1)]])
 		if role == "keystone":
 			var guards: Array = GUARDS[depth]
+			var guard_ids: Array = []
 			for i in guards.size():
-				enemies.append(["hollow_%d_e%d" % [depth, enemies.size()], center + Vector2(-70 if i == 0 else 70, 20), guards[i]])
-			var chest := {"id": "delve_keystone_%d" % depth, "point": center + Vector2(0, -80), "items": KEYSTONE_ITEMS[depth].duplicate()}
+				guard_ids.append("hollow_%d_e%d" % [depth, enemies.size()])
+				enemies.append([guard_ids.back(), center + Vector2(-70 if i == 0 else 70, 20), guards[i]])
+			var chest := {"id": "delve_keystone_%d" % depth, "point": center + Vector2(0, -80), "items": KEYSTONE_ITEMS[depth].duplicate(), "requires": guard_ids}
 			if depth == DEPTHS: chest["gear"] = ["deep_mail"]
 			chests.append(chest)
 	for entry in enemies:

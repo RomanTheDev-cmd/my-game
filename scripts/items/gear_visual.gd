@@ -4,6 +4,10 @@ func _draw() -> void:
 	if Session.equipped.armor == "relay_cloak":
 		draw_rect(Rect2(-7, -18, 14, 17), Color("677d87"))
 		draw_rect(Rect2(-2, -17, 4, 4), Color("d1ba85"))
+	if Session.equipped.armor == "deep_mail":
+		draw_rect(Rect2(-5, -15, 10, 11), Color("4e5f73"))
+		for y in [-13, -10, -7]: draw_line(Vector2(-5, y), Vector2(5, y), Color("8fb0c8"), 1)
+		draw_rect(Rect2(-6, -16, 12, 2), Color("b7c7d1"))
 	if Session.equipped.armor in ["quilted", "chain"]:
 		var color := Color("718598") if Session.equipped.armor == "chain" else Color("697f68")
 		draw_rect(Rect2(-4, -14, 8, 9), color)

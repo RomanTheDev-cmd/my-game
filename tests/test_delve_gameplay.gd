@@ -87,6 +87,9 @@ func run() -> void:
 	var chest := keystone_chest(game)
 	game.world.player.position = chest.position + Vector2(0, 25)
 	check(not game.world.safe_to_rest(), "the keystone is guarded")
+	check(not session.claim_chest(chest.get_meta("definition"), chest.position, game.world.player_vitals()) and Rules.keystone(1) not in session.opened, "backend refuses the keystone while its guards live")
+	var deeper: Dictionary = game.world.DelveGenerator.generate(Rules.seed_of(session.world_state), 2).chests.filter(func(item): return item.get("hidden", false))[0]
+	check(not session.claim_chest(deeper, chest.position, game.world.player_vitals()) and deeper.id not in session.opened, "a cache from another depth cannot be claimed here")
 	var xp: int = session.xp
 	await defeat_keystone_guards(game)
 	check(session.xp > xp and game.world.safe_to_rest(), "real guard defeats give experience and make the room safe")
@@ -146,6 +149,9 @@ func run() -> void:
 	await settle()
 	check(session.region == "hollow_2" and Rules.keystone(1) in session.opened and session.defeated == defeated, "restore keeps the hollow and earlier progress")
 	# The deepest keystone and its armour.
+	# Shortcut through the second depth: its guards are recorded as defeated together with its keystone.
+	var second: Dictionary = game.world.DelveGenerator.generate(Rules.seed_of(session.world_state), 2)
+	session.defeated.append_array(second.chests.filter(func(item): return item.id == Rules.keystone(2))[0].requires.filter(func(id): return id not in session.defeated))
 	session.opened.append("delve_keystone_2")
 	await build(game, session, "hollow_3", Vector2(250, 680))
 	check(not game.world.definition.has("stairs") and game.world.delve_stairs == null, "the deepest hollow has no further stairs")
