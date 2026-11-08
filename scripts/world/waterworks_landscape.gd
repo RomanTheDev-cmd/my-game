@@ -2,8 +2,10 @@ extends "res://scripts/world/landscape.gd"
 const WALLS := [Rect2(-30, -30, 1980, 30), Rect2(-30, 1280, 1980, 30), Rect2(-30, 0, 30, 1280), Rect2(1920, 0, 30, 1280),
 	Rect2(90, 170, 1740, 80), Rect2(90, 1160, 1740, 80), Rect2(90, 250, 60, 300), Rect2(90, 750, 60, 410), Rect2(1770, 250, 60, 910),
 	Rect2(420, 480, 230, 50), Rect2(420, 800, 180, 50), Rect2(1000, 350, 60, 140), Rect2(1460, 840, 70, 110), Rect2(1130, 980, 110, 70)]
+# Solid rock beyond the inner frame: only the exit alcove stays open outside the hall.
+const ROCK := [Rect2(0, 0, 90, 1280), Rect2(0, 0, 1920, 170), Rect2(0, 1240, 1920, 40), Rect2(1830, 0, 90, 1280)]
 func _ready() -> void:
-	for rect in WALLS: _obstacle(rect)
+	for rect in WALLS + ROCK: _obstacle(rect)
 	for rect in [Rect2(1540, 250, 180, 20), Rect2(1540, 250, 20, 140), Rect2(1700, 250, 20, 140), Rect2(780, 930, 230, 20), Rect2(990, 930, 20, 170), Rect2(780, 1080, 230, 20)]: _obstacle(rect)
 	if "waterworks_flight" not in Session.opened: _gate(Rect2(1560, 380, 140, 16), 16, "waterworks_flight")
 	if "waterworks_mist" not in Session.opened:

@@ -1,7 +1,9 @@
 extends "res://scripts/world/landscape.gd"
 const WALLS := [Rect2(-30, -30, 1980, 30), Rect2(-30, 1280, 1980, 30), Rect2(-30, 0, 30, 1280), Rect2(1920, 0, 30, 1280), Rect2(90, 170, 1740, 80), Rect2(90, 1160, 1740, 80), Rect2(90, 250, 60, 310), Rect2(90, 760, 60, 400), Rect2(1770, 250, 60, 910), Rect2(820, 340, 50, 180), Rect2(820, 900, 50, 180), Rect2(1430, 350, 60, 180), Rect2(1430, 880, 60, 180)]
+# Solid rock beyond the inner frame: only the exit alcove stays open outside the hall.
+const ROCK := [Rect2(0, 0, 90, 1280), Rect2(0, 0, 1920, 170), Rect2(0, 1240, 1920, 40), Rect2(1830, 0, 90, 1280)]
 func _ready() -> void:
-	for rect in WALLS: _obstacle(rect)
+	for rect in WALLS + ROCK: _obstacle(rect)
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, 1920, 1280), Color("20383d"))
 	draw_rect(Rect2(150, 250, 1620, 910), Color("777e72"))
